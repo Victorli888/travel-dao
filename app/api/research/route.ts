@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createNotionMcpClient, listAnthropicTools, executeTool } from "@/lib/mcp-client";
 
 export const maxDuration = 120;
 
@@ -100,38 +101,108 @@ If the Notion API cannot create nested toggles in one step, flatten temporarily:
 ## Phase 4 — Reply to the user (minimal)
 After the Notion entry is successfully written, reply with **at most 2–3 sentences**: confirm success, give the **Notion path** (e.g. \`Kyoto > Good Eats > Dessert > Patisserie Rau\`), and note anything critical (e.g. hours unverified). Do **not** output JSON, code fences, or a full repeat of the research.`;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (anthropic as any).beta.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8096,
-      betas: ["mcp-client-2025-04-04"],
-      mcp_servers: [
-        {
-          type: "url",
-          url: "https://mcp.notion.com/mcp",
-          name: "notion",
-          authorization_token: process.env.NOTION_API_KEY,
-        },
-      ],
-      system: systemPrompt,
-      messages: [{ role: "user", content: message }],
-    });
+    // Open MCP connection — closed in finally block regardless of outcome
+    const { client, close } = await createNotionMcpClient(
+      process.env.NOTION_API_KEY
+    );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const text = (response.content as any[])
-      .filter((b) => b.type === "text")
-      .map((b: { text: string }) => b.text)
-      .join("")
-      .trim();
+    try {
+      const tools = await listAnthropicTools(client);
+      const messages: Anthropic.MessageParam[] = [
+        { role: "user", content: message },
+      ];
 
-    return NextResponse.json({ success: true, message: text });
+      let finalText = "";
+      const MAX_ITERATIONS = 15;
+
+      for (let i = 0; i < MAX_ITERATIONS; i++) {
+        const response = await anthropic.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 8096,
+          system: systemPrompt,
+          tools,
+          messages,
+        });
+
+        // Append assistant turn to history
+        messages.push({ role: "assistant", content: response.content });
+
+        if (response.stop_reason === "end_turn") {
+          finalText = response.content
+            .filter((b): b is Anthropic.TextBlock => b.type === "text")
+            .map((b) => b.text)
+            .join("")
+            .trim();
+          break;
+        }
+
+        if (response.stop_reason === "tool_use") {
+          const toolUseBlocks = response.content.filter(
+            (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+          );
+
+          // Execute all tool calls in parallel
+          const toolResults = await Promise.all(
+            toolUseBlocks.map(async (block) => {
+              try {
+                const { content, isError } = await executeTool(
+                  client,
+                  block.name,
+                  block.input as Record<string, unknown>
+                );
+                return {
+                  type: "tool_result" as const,
+                  tool_use_id: block.id,
+                  content,
+                  is_error: isError,
+                };
+              } catch (err) {
+                return {
+                  type: "tool_result" as const,
+                  tool_use_id: block.id,
+                  content: err instanceof Error ? err.message : "Tool call failed",
+                  is_error: true,
+                };
+              }
+            })
+          );
+
+          messages.push({ role: "user", content: toolResults });
+          continue;
+        }
+
+        // stop_reason: "max_tokens" or "stop_sequence" — extract whatever text exists
+        finalText = response.content
+          .filter((b): b is Anthropic.TextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("")
+          .trim();
+        break;
+      }
+
+      return NextResponse.json({ success: true, message: finalText });
+    } finally {
+      await close();
+    }
   } catch (error) {
     console.error("Research error:", error);
+    const message =
+      error instanceof Error ? error.message : "An unexpected error occurred";
+
+    // Surface MCP auth errors clearly
+    if (message.includes("Authentication error")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Notion authentication failed. Check that your NOTION_API_KEY is valid and the integration is connected to your planner page.",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
-      },
+      { success: false, error: message },
       { status: 500 }
     );
   }
