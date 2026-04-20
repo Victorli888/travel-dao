@@ -87,11 +87,11 @@ Use the Notion MCP tools to organize under the workspace parent:
 7. Under that **subcategory toggle**, add the new place entry.
 
 ### Entry content (inside the subcategory toggle)
-Use a clear heading or toggle title: **[Place name]** (optionally suffix " — [short area]" if it helps disambiguate).
+Create a **toggle block** titled: **[Place name]** (optionally suffix " — [short area]" if it helps disambiguate). Always use a toggle block — never a heading or plain paragraph.
 
 Inside the entry include:
 - **Overview** — summary from Phase 1
-- **Location & address** — formatted address + transit hint if reliable
+- **Location & address** — formatted address
 - **Hours** — structured bullets; unknown sections = "Unknown / not verified"
 
 Use Notion-friendly blocks (paragraphs, bullets, bold labels). If data is missing, write "Unknown / not verified" instead of guessing.
@@ -117,10 +117,14 @@ After the Notion entry is successfully written, reply with **at most 2–3 sente
 
       for (let i = 0; i < MAX_ITERATIONS; i++) {
         const response = await anthropic.messages.create({
-          model: "claude-sonnet-4-6",
-          max_tokens: 8096,
-          system: systemPrompt,
-          tools,
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 2048,
+          system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
+          tools: tools.map((tool, i) =>
+            i === tools.length - 1
+              ? { ...tool, cache_control: { type: "ephemeral" } }
+              : tool
+          ),
           messages,
         });
 
