@@ -8,10 +8,9 @@ interface Props {
 }
 
 const EXAMPLES = [
-  "Patisserie Rau in Kyoto has pastries I want to try",
-  "I want to hike the Cinque Terre coastal trail in Italy",
-  "Tsukiji outer market for early morning sushi in Tokyo",
-  "The blue lagoon geothermal spa in Iceland",
+  "Tokyo Tower, 4 Chome-2-8 Shibakoen, Minato City, Tokyo 105-0011, Japan",
+  "Patisserie Rau, 169 Higashiyama, Yamashina Ward, Kyoto 607-8322, Japan",
+  "Blue Lagoon, 240 Grindavíkurvegur, 240 Grindavík, Iceland",
 ];
 
 export default function ChatInput({ onSubmit, error }: Props) {
@@ -27,7 +26,7 @@ export default function ChatInput({ onSubmit, error }: Props) {
         setExampleIndex((i) => (i + 1) % EXAMPLES.length);
         setExampleVisible(true);
       }, 300);
-    }, 3500);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -52,7 +51,7 @@ export default function ChatInput({ onSubmit, error }: Props) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {error && (
         <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-300">
           <span className="font-medium">Error: </span>
@@ -60,9 +59,7 @@ export default function ChatInput({ onSubmit, error }: Props) {
         </div>
       )}
 
-      <div
-        className="rounded-2xl border border-white/10 bg-[#13131f] overflow-hidden transition-all duration-200 focus-within:border-purple-500/50 focus-within:shadow-[0_0_0_3px_rgba(168,85,247,0.1)]"
-      >
+      <div className="rounded-2xl border border-white/10 bg-[#13131f] overflow-hidden transition-all duration-200 focus-within:border-purple-500/50 focus-within:shadow-[0_0_0_3px_rgba(168,85,247,0.1)]">
         <textarea
           ref={textareaRef}
           value={value}
@@ -70,11 +67,7 @@ export default function ChatInput({ onSubmit, error }: Props) {
           onKeyDown={handleKeyDown}
           rows={2}
           className="w-full px-5 pt-4 pb-2 text-sm text-zinc-100 focus:outline-none resize-none overflow-hidden leading-relaxed bg-transparent placeholder:text-zinc-600"
-          placeholder={
-            exampleVisible
-              ? `Try: "${EXAMPLES[exampleIndex]}"`
-              : ""
-          }
+          placeholder={exampleVisible ? EXAMPLES[exampleIndex] : ""}
         />
         <div className="flex items-center justify-between px-4 pb-3.5 pt-1">
           <p className="text-xs text-zinc-600">Enter to submit · Shift+Enter for new line</p>
@@ -90,6 +83,10 @@ export default function ChatInput({ onSubmit, error }: Props) {
           </button>
         </div>
       </div>
+
+      <p className="text-xs text-zinc-600 px-1">
+        Format: <span className="text-zinc-500">Place name, full address</span>
+      </p>
     </div>
   );
 }

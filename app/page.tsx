@@ -10,7 +10,7 @@ export default function Home() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (input: string) => {
+  const handleSubmit = async (message: string) => {
     setStatus("loading");
     setError(null);
 
@@ -18,7 +18,7 @@ export default function Home() {
       const response = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message }),
       });
 
       const json = await response.json();
