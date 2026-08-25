@@ -4,13 +4,35 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { z } from "zod";
+import { UpstreamAuthError } from "@/lib/api/errors";
 
 type ToolCallResult = z.infer<typeof CallToolResultSchema>;
 type ContentBlock = ToolCallResult["content"][number];
 
+const NOTION_VERSION = "2022-06-28";
+
 function contentBlockToText(block: ContentBlock): string {
   if (block.type === "text") return block.text;
   return JSON.stringify(block);
+}
+
+/**
+ * Runs a setup step, turning credential rejections into a typed error the
+ * route can render. Classifying here keeps the route from matching substrings
+ * against whatever message happened to bubble up.
+ */
+async function classifyingAuthFailures<T>(step: () => Promise<T>): Promise<T> {
+  try {
+    return await step();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/auth/i.test(message)) {
+      throw new UpstreamAuthError(
+        "Notion authentication failed. Check that your NOTION_API_KEY is valid and the integration is connected to your planner page."
+      );
+    }
+    throw err;
+  }
 }
 
 /**
@@ -27,17 +49,14 @@ export async function createNotionMcpClient(token: string) {
       ...(process.env as Record<string, string>),
       OPENAPI_MCP_HEADERS: JSON.stringify({
         Authorization: `Bearer ${token}`,
-        "Notion-Version": "2022-06-28",
+        "Notion-Version": NOTION_VERSION,
       }),
     },
   });
 
-  const client = new Client(
-    { name: "dao", version: "1.0.0" },
-    { capabilities: {} }
-  );
+  const client = new Client({ name: "dao", version: "1.0.0" }, { capabilities: {} });
 
-  await client.connect(transport);
+  await classifyingAuthFailures(() => client.connect(transport));
 
   return { client, close: () => client.close() };
 }
@@ -46,7 +65,7 @@ export async function createNotionMcpClient(token: string) {
 export async function listAnthropicTools(
   client: Client
 ): Promise<Anthropic.Tool[]> {
-  const { tools } = await client.listTools();
+  const { tools } = await classifyingAuthFailures(() => client.listTools());
 
   return tools.map((t) => ({
     name: t.name,
@@ -61,7 +80,10 @@ export async function listAnthropicTools(
   }));
 }
 
-/** Executes a single Notion MCP tool call and returns the text result. */
+/**
+ * Executes a single Notion MCP tool call. Failures come back as `isError`
+ * rather than throwing, so the model can see them and adjust.
+ */
 export async function executeTool(
   client: Client,
   name: string,
