@@ -12,11 +12,8 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  if (session && !isPublic) {
-    const isAllowed = (session.user as Record<string, unknown>)?.isAllowed;
-    if (!isAllowed) {
-      return NextResponse.redirect(new URL("/unauthorized", nextUrl));
-    }
+  if (session && !isPublic && !session.user?.isAllowed) {
+    return NextResponse.redirect(new URL("/unauthorized", nextUrl));
   }
 
   return NextResponse.next();

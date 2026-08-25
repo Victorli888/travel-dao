@@ -1,5 +1,10 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { getEnv } from "@/lib/api/env";
 
-export function getSql() {
-  return neon(process.env.DATABASE_URL!);
+let cached: NeonQueryFunction<false, false> | null = null;
+
+/** Memoized Neon query function. */
+export function getSql(): NeonQueryFunction<false, false> {
+  if (!cached) cached = neon(getEnv().DATABASE_URL);
+  return cached;
 }

@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { getSql } from "@/lib/db";
+import { isEmailAllowed } from "@/lib/auth/allowlist";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
@@ -8,20 +8,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
+    // `user` is only present on the initial sign-in; afterwards the decision
+    // is carried by the token.
     async jwt({ token, user }) {
-      if (user?.email) {
-        const sql = getSql();
-        const rows = await sql`
-          SELECT 1 FROM allowed_emails
-          WHERE email = ${user.email.toLowerCase()}
-          LIMIT 1
-        `;
-        token.isAllowed = rows.length > 0;
-      }
+      if (user?.email) token.isAllowed = await isEmailAllowed(user.email);
       return token;
     },
     async session({ session, token }) {
-      (session.user as unknown as Record<string, unknown>).isAllowed = token.isAllowed;
+      session.user.isAllowed = token.isAllowed ?? false;
       return session;
     },
   },
