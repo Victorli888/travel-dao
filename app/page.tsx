@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import PageShell from "@/components/ui/PageShell";
+import Wordmark from "@/components/ui/Wordmark";
 import ChatInput from "@/components/ChatInput";
 import LoadingState from "@/components/LoadingState";
 import SuccessCard from "@/components/SuccessCard";
@@ -42,33 +44,32 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-full max-w-xl">
-        {status !== "success" && (
-          <div className="mb-10 text-center">
-            <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium px-3 py-1 rounded-full mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-              Powered by AI
-            </div>
-            <h1 className="flex items-baseline justify-center gap-3 text-4xl font-bold text-white tracking-tight">
-              Dao
-              <span className="text-3xl font-normal text-purple-400/70">道</span>
-            </h1>
-            <p className="mt-3 text-zinc-400 text-sm leading-relaxed">
-              Describe any place you want to visit.<br />
-              I'll research it and organize it in Notion.
-            </p>
+    <PageShell>
+      {status !== "success" && (
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 bg-accent-bright/10 border border-accent-bright/20 text-accent-pale text-xs font-medium px-3 py-1 rounded-full mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-light animate-pulse" />
+            Powered by AI
           </div>
-        )}
+          <Wordmark
+            tagline={
+              <>
+                Describe any place you want to visit.
+                <br />
+                I'll research it and organize it in Notion.
+              </>
+            }
+          />
+        </div>
+      )}
 
-        {status === "loading" ? (
-          <LoadingState />
-        ) : status === "success" && message ? (
-          <SuccessCard message={message} onAddAnother={handleReset} />
-        ) : (
-          <ChatInput onSubmit={handleSubmit} error={error} />
-        )}
-      </div>
-    </main>
+      {status === "loading" ? (
+        <LoadingState />
+      ) : status === "success" && message ? (
+        <SuccessCard message={message} onAddAnother={handleReset} />
+      ) : (
+        <ChatInput onSubmit={handleSubmit} error={error} />
+      )}
+    </PageShell>
   );
 }

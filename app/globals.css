@@ -1,15 +1,26 @@
 @import "tailwindcss";
 
-:root {
-  --bg: #0c0c13;
-  --surface: #13131f;
-  --surface-raised: #1a1a2a;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.12);
+/*
+ * Design tokens. Every surface, hairline, and accent in the app comes from
+ * here — components should never hardcode a hex value or a `white/10`.
+ * The accent ramp mirrors Tailwind's purple-600/500/400/300 exactly.
+ */
+@theme {
+  --color-canvas: #0c0c13;
+  --color-surface: #13131f;
+  --color-surface-raised: #1a1a2a;
+
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-strong: rgba(255, 255, 255, 0.2);
+
+  --color-accent: oklch(55.8% 0.288 302.321);        /* solid CTA */
+  --color-accent-bright: oklch(62.7% 0.265 303.9);   /* CTA hover, tinted glows */
+  --color-accent-light: oklch(71.4% 0.203 305.504);  /* decorative marks */
+  --color-accent-pale: oklch(82.7% 0.119 306.383);   /* accent text on dark */
 }
 
 body {
-  background-color: var(--bg);
+  background-color: var(--color-canvas);
   background-image:
     radial-gradient(ellipse 80% 40% at 50% -10%, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
   min-height: 100vh;
