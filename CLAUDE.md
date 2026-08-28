@@ -1,4 +1,4 @@
-# CLAUDE.md
+# [CLAUDE.md](http://CLAUDE.md)
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -30,39 +30,66 @@ schema.
 Single-feature Next.js 15 App Router app: one input, one API route, one
 agentic Claude run that writes to Notion.
 
+### Data model
+
+`lib/db/schema.ts` is the single source of truth. Four tables: `trips`,
+`days`, `activities`, plus the existing `allowed_emails`.
+
+- `activities.day_id` NULL is **by design** — it means an unscheduled
+wishlist item, not missing data. Never filter it out by default and
+never treat it as an error state.
+- Joining activities to days uses LEFT JOIN. An INNER JOIN silently drops
+every wishlist item, which reads as data loss rather than a bug.
+- Deleting a day sets its activities' `day_id` to NULL (back to the
+wishlist); deleting a trip cascades and destroys its activities. These
+cascade rules are product decisions, not defaults — don't change them
+to match a convention.
+- All timestamps are `timestamptz`. The app spans time zones.
+- Schema changes go through `db:generate` → review the emitted SQL →
+`db:migrate`. Never hand-write DDL against Neon and never edit a
+migration that has already been applied.
+
+
+
 ### Layers
 
 Each directory is one layer. The rule that decides where code goes:
-**a file in `components/ui/` or `components/research/` may not call `fetch`,
-may not hold a `useState` that outlives a keystroke, and may not parse or
+**a file in** `components/ui/` **or** `components/research/` **may not call** `fetch`**,
+may not hold a** `useState` **that outlives a keystroke, and may not parse or
 transform domain data.** Anything that does belongs in a hook, in `lib/`,
 or in the orchestrator.
 
-| Directory | Contains |
-|---|---|
-| `app/` | Routes only. Thin — `app/page.tsx` is a server component that renders `PageShell` + `ResearchPanel`. |
-| `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs. |
-| `components/ui/` | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`. |
-| `components/research/` | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
-| `hooks/` | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`. |
-| `lib/research/` | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`. |
-| `lib/mcp/` | `notion-client.ts` — MCP transport and tool translation. |
-| `lib/api/` | `env`, `errors`, `responses` (server) and `research-client` (browser). |
-| `types/` | Ambient module augmentation (`next-auth.d.ts`). |
+
+| Directory                      | Contains                                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/`                         | Routes only. Thin — `app/page.tsx` is a server component that renders `PageShell` + `ResearchPanel`.                                                    |
+| `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs.                |
+| `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`.                            |
+| `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
+| `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
+| `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
+| `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
+| `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
+| `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
+
+
+
 
 ### Request flow
 
 1. `ChatInput` → `ResearchPanel` → `useResearch.submit`
 2. `postResearch` (`lib/api/research-client.ts`) POSTs to `/api/research`
 3. The route validates the body with `parseResearchRequest` and calls
-   `runResearchAgent`
+  `runResearchAgent`
 4. `runResearchAgent` spawns the Notion MCP subprocess, builds the system
-   prompt, and hands both to `runAgentLoop`
+  prompt, and hands both to `runAgentLoop`
 5. `runAgentLoop` prompts Claude, executes any tool calls, and repeats until
-   the model stops (bounded by `MAX_ITERATIONS`); the MCP subprocess is torn
+  the model stops (bounded by `MAX_ITERATIONS`); the MCP subprocess is torn
    down in a `finally`
 6. `ResearchPanel` runs `parseNotionPath` over the reply and renders
-   `SuccessCardView`
+  `SuccessCardView`
+
+
 
 ### The agent loop
 
