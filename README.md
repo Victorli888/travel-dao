@@ -56,7 +56,7 @@ the app itself stores nothing but the allow-list of who may sign in.
 | Language | TypeScript 5.9 (strict) |
 | Styling | Tailwind CSS 4.2 — no config file; tokens live in an `@theme` block in `app/globals.css` |
 | Auth | Auth.js / next-auth 5.0.0-beta.31, Google provider |
-| Database | Neon serverless Postgres (`@neondatabase/serverless` 1.1) — allow-list only |
+| Database | Neon serverless Postgres (`@neondatabase/serverless` 1.1), Drizzle ORM 0.45 + drizzle-kit 0.31 |
 | AI | `@anthropic-ai/sdk` 0.40, model `claude-haiku-4-5-20251001` |
 | Tools | `@modelcontextprotocol/sdk` 1.29 + `@notionhq/notion-mcp-server` 2.2 over stdio |
 | Validation | zod 4.4 (request body and environment) |
@@ -103,16 +103,23 @@ cp .env.example .env.local   # then fill in every value
 `lib/api/env.ts` validates the first four with zod and fails loudly, naming
 whatever is missing. The `AUTH_*` variables are read by Auth.js itself.
 
-### Create the allow-list table
+### Set up the database
 
-There are no migration files in this repo. The table is whatever satisfies the
-query in `lib/auth/allowlist.ts`, which is minimally:
+The schema lives in `lib/db/schema.ts` and migrations in `drizzle/`:
+
+```bash
+npm run db:migrate
+```
+
+Note that `drizzle/0000_*.sql` is a **descriptive no-op baseline** — its body
+is commented out, because those ten tables were hand-created against Neon
+before this repo had migrations. Against an existing database it applies
+nothing and simply records the starting point. For a **fresh** database,
+uncomment that file's body before running the command above.
+
+Then add yourself to the allow-list — signing in with Google is not enough:
 
 ```sql
-CREATE TABLE allowed_emails (
-  email TEXT PRIMARY KEY
-);
-
 INSERT INTO allowed_emails (email) VALUES ('you@example.com');
 ```
 
@@ -127,6 +134,10 @@ npm start           # serve the production build
 npm run lint        # ESLint
 npm test            # Vitest, once
 npm run test:watch  # Vitest, watching
+
+npm run db:generate # emit a migration from lib/db/schema.ts
+npm run db:migrate  # apply pending migrations
+npm run db:studio   # Drizzle Studio
 ```
 
 Sign in at `/login` with an allow-listed Google account, then submit a place.

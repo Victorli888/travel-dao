@@ -11,7 +11,15 @@ npm run build      # Production build (also typechecks)
 npm run lint       # ESLint
 npm test           # Vitest, once
 npm run test:watch # Vitest, watching
+
+npm run db:generate # Emit a migration from lib/db/schema.ts
+npm run db:migrate  # Apply pending migrations to Neon
+npm run db:pull     # Introspect Neon (reference only — see Data model)
+npm run db:studio   # Drizzle Studio
 ```
+
+`drizzle-kit` runs outside Next.js, so `drizzle.config.ts` loads
+`.env.local` itself via `dotenv`.
 
 ## Environment Setup
 
@@ -32,12 +40,44 @@ agentic Claude run that writes to Notion.
 
 ### Data model
 
-`lib/db/schema.ts` is the single source of truth. Four tables: `trips`,
-`days`, `activities`, plus the existing `allowed_emails`.
+`lib/db/schema.ts` is the single source of truth — eleven tables, grouped
+in the file by concern:
 
+| Group | Tables |
+| --- | --- |
+| Access control | `allowed_emails` |
+| Reference data | `countries`, `cities`, `activity_categories` |
+| Trips | `trips`, `trip_destinations` |
+| Itinerary | `itinerary_days` |
+| Activities | `activities` |
+| Ratings | `user_activity_ratings`, `user_category_ratings` |
+| Audit | `ai_prompts` |
+
+**There is no `users` table.** Ownership is the signed-in email, carried
+as `user_email` and constrained against `allowed_emails`. Auth.js stores
+no user rows — the allow-list *is* the user table. Don't add a `users`
+table or an `owner_id`; join on the email.
+
+Ten of these tables were hand-created against Neon before the repo had
+migrations, so `drizzle/0000_*.sql` is a **descriptive no-op baseline**:
+its body is commented out because the tables already existed. It is
+recorded only so drizzle has a snapshot to diff against. A fresh database
+must be bootstrapped by uncommenting that file first. Everything from
+`0001` onward is real, generated, and applied.
+
+- A day belongs to a **trip**, not to a `trip_destination`. On a
+multi-city trip the city is derived by comparing the day's date against
+each destination's arrive/depart range.
+- `UNIQUE (trip_id, date)` on `itinerary_days` makes "one row per
+calendar day" a database invariant, so day generation is a plain upsert.
 - `activities.day_id` NULL is **by design** — it means an unscheduled
 wishlist item, not missing data. Never filter it out by default and
 never treat it as an error state.
+- `activities.position` is nullable and means *unordered*, not first.
+- Index operator classes in `schema.ts` (`text_ops` / `uuid_ops`) mirror
+what is physically in Postgres, including a few that read as mismatched.
+They are recorded, not chosen — "correcting" one emits a migration that
+rebuilds the index.
 - Joining activities to days uses LEFT JOIN. An INNER JOIN silently drops
 every wishlist item, which reads as data loss rather than a bug.
 - Deleting a day sets its activities' `day_id` to NULL (back to the
@@ -68,6 +108,7 @@ or in the orchestrator.
 | `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
 | `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
 | `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
+| `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
 | `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
 | `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |

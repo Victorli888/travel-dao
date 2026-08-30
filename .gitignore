@@ -15,6 +15,7 @@ out/
 *.pem
 npm-debug.log*
 scratch/
+docs/
 
 # Generated Files
 next-env.d.ts
