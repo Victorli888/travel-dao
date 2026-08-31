@@ -225,21 +225,26 @@ export const itineraryDays = pgTable(
 /* -------------------------------------------------------------------------- */
 
 /**
- * Something to do. Always belongs to a trip (`trip_id` is NOT NULL and
- * cascades), so an activity is never orphaned.
+ * Something to do — one row per real-world place, per trip. Always belongs to a
+ * trip (`trip_id` is NOT NULL and cascades), so an activity is never orphaned.
  *
- * `day_id` NULL is **by design** — it means an unscheduled wishlist item, not
- * missing data. Never filter it out by default and never treat it as an error
- * state. Joining activities to days therefore uses LEFT JOIN; an INNER JOIN
- * silently drops every wishlist item, which reads as data loss rather than a
- * bug.
+ * This row says *what the place is*, never *when we are going*. Scheduling
+ * lives in `itinerary_day_activities` below, because an activity may recur
+ * across days and a single `day_id` column could only ever hold one of them.
  *
- * The two deletes differ on purpose: deleting a *day* returns its activities
- * to the wishlist (`SET NULL`), while deleting a *trip* destroys them
- * (`CASCADE`). These are product decisions, not defaults.
+ * An activity with **no** placement row is an unscheduled wishlist item — that
+ * is by design, not missing data. Never filter it out by default and never
+ * treat it as an error state. Reading days therefore LEFT JOINs through the
+ * placement table; an INNER JOIN silently drops every wishlist item, which
+ * reads as data loss rather than a bug.
  *
- * `lat`/`lng`/`duration_minutes`/`price_tier`/`position` exist to serve a
- * day-optimizer, not the CRUD UI — they are expected to be NULL for most rows.
+ * The two deletes still differ on purpose: deleting a *day* cascades away its
+ * placements and leaves the activities alone (they fall back to the wishlist),
+ * while deleting a *trip* destroys them outright. These are product decisions,
+ * not defaults.
+ *
+ * `lat`/`lng`/`duration_minutes`/`price_tier` exist to serve a day-optimizer,
+ * not the CRUD UI — they are expected to be NULL for most rows.
  */
 export const activities = pgTable(
   "activities",
@@ -247,8 +252,6 @@ export const activities = pgTable(
     id: uuid("id").defaultRandom().primaryKey().notNull(),
     userEmail: text("user_email").notNull(),
     tripId: uuid("trip_id").notNull(),
-    /** NULL = on the wishlist, not yet scheduled to a day. */
-    dayId: uuid("day_id"),
     cityId: uuid("city_id"),
     categoryId: uuid("category_id"),
     name: text("name").notNull(),
@@ -258,8 +261,6 @@ export const activities = pgTable(
     lng: numeric("lng", { precision: 9, scale: 6 }),
     /** Opening hours as the agent wrote them, e.g. "Tue–Sun 11am–7pm". */
     hoursOperation: text("hours_operation"),
-    /** Manual order within a day. NULL means unordered, not first. */
-    position: integer("position"),
     source: text("source").default("ai_generated").notNull(),
     sourceMetadata: jsonb("source_metadata"),
     durationMinutes: integer("duration_minutes"),
@@ -274,13 +275,6 @@ export const activities = pgTable(
       t.userEmail.asc().nullsLast().op("text_ops"),
       t.tripId.asc().nullsLast().op("text_ops")
     ),
-    /** Serves "the activities on this day, in order". */
-    index("idx_activities_day").on(t.dayId, t.position),
-    foreignKey({
-      columns: [t.dayId],
-      foreignColumns: [itineraryDays.id],
-      name: "activities_day_id_fkey",
-    }).onDelete("set null"),
     foreignKey({
       columns: [t.userEmail],
       foreignColumns: [allowedEmails.email],
@@ -301,6 +295,67 @@ export const activities = pgTable(
       foreignColumns: [activityCategories.id],
       name: "activities_category_id_fkey",
     }),
+  ]
+);
+
+/**
+ * Which activities are scheduled on which day.
+ *
+ * A join table, because this is many-to-many: a day holds many activities and
+ * an activity may recur across days (a two-day park ticket, a cafe worth a
+ * second visit). A single `activities.day_id` column could only ever hold one
+ * day, so the alternative was cloning the activity row per day — and
+ * `user_activity_ratings` is keyed on `activity_id`, so each clone would
+ * collect its own rating for what is one real place. Cloning also fans every
+ * edit to `address`/`hours_operation`/`summary` out across rows with nothing in
+ * the schema linking them.
+ *
+ * Declared *after* `activities` rather than up in the Itinerary section next to
+ * `itinerary_days`: the foreign key below reads `activities.id`, and drizzle
+ * evaluates this callback while `pgTable` runs, so an earlier declaration would
+ * hit the temporal dead zone at module load.
+ *
+ * `position` lives here rather than on `activities` because ordering is a
+ * property of the placement, not of the place — the same activity is first on
+ * one day and third on another. NULL still means *unordered*, not first.
+ *
+ * `UNIQUE (day_id, activity_id)` is a deliberate call, not a formality: it
+ * blocks the same activity twice on one day, so a morning visit plus an evening
+ * return is one row and a note rather than two rows. Accidental double-adds are
+ * likelier than intentional same-day repeats. Dropping the constraint later is
+ * a one-line migration if that turns out to be wrong.
+ */
+export const itineraryDayActivities = pgTable(
+  "itinerary_day_activities",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    dayId: uuid("day_id").notNull(),
+    activityId: uuid("activity_id").notNull(),
+    /** Manual order within the day. NULL means unordered, not first. */
+    position: integer("position"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("itinerary_day_activities_day_id_activity_id_key").on(
+      t.dayId,
+      t.activityId
+    ),
+    /** Serves "the activities on this day, in order". */
+    index("idx_ida_day").on(t.dayId, t.position),
+    /** Serves "which days is this activity on". */
+    index("idx_ida_activity").on(t.activityId),
+    foreignKey({
+      columns: [t.dayId],
+      foreignColumns: [itineraryDays.id],
+      name: "itinerary_day_activities_day_id_fkey",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [t.activityId],
+      foreignColumns: [activities.id],
+      name: "itinerary_day_activities_activity_id_fkey",
+    }).onDelete("cascade"),
   ]
 );
 

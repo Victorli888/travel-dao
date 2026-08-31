@@ -40,7 +40,7 @@ agentic Claude run that writes to Notion.
 
 ### Data model
 
-`lib/db/schema.ts` is the single source of truth — eleven tables, grouped
+`lib/db/schema.ts` is the single source of truth — twelve tables, grouped
 in the file by concern:
 
 | Group | Tables |
@@ -48,7 +48,7 @@ in the file by concern:
 | Access control | `allowed_emails` |
 | Reference data | `countries`, `cities`, `activity_categories` |
 | Trips | `trips`, `trip_destinations` |
-| Itinerary | `itinerary_days` |
+| Itinerary | `itinerary_days`, `itinerary_day_activities` |
 | Activities | `activities` |
 | Ratings | `user_activity_ratings`, `user_category_ratings` |
 | Audit | `ai_prompts` |
@@ -70,20 +70,35 @@ multi-city trip the city is derived by comparing the day's date against
 each destination's arrive/depart range.
 - `UNIQUE (trip_id, date)` on `itinerary_days` makes "one row per
 calendar day" a database invariant, so day generation is a plain upsert.
-- `activities.day_id` NULL is **by design** — it means an unscheduled
-wishlist item, not missing data. Never filter it out by default and
-never treat it as an error state.
-- `activities.position` is nullable and means *unordered*, not first.
+- **`itinerary_day_activities` is a join table, and the scheduling is
+there — not on `activities`.** Day↔activity is many-to-many: the same
+activity can sit on several days (a two-day park ticket). An activity is
+one row with one identity, placed onto N days by N rows here. Never
+reintroduce `activities.day_id`; cloning the activity per day fragments
+`user_activity_ratings`, which is keyed on `activity_id`.
+- An activity with **no** placement row is an unscheduled wishlist item —
+by design, not missing data. Never filter it out by default and never
+treat it as an error state. The test is `NOT EXISTS (... )`, not a NULL
+column.
+- `itinerary_day_activities.position` is nullable and means *unordered*,
+not first. It lives on the placement, not the activity, because ordering
+is a property of the pairing — the same activity is first on one day and
+third on another.
+- `UNIQUE (day_id, activity_id)` blocks the same activity twice on one
+day: a morning visit plus an evening return is one row and a note, not
+two rows. That is a product call, reversible with a one-line migration.
 - Index operator classes in `schema.ts` (`text_ops` / `uuid_ops`) mirror
 what is physically in Postgres, including a few that read as mismatched.
 They are recorded, not chosen — "correcting" one emits a migration that
 rebuilds the index.
-- Joining activities to days uses LEFT JOIN. An INNER JOIN silently drops
-every wishlist item, which reads as data loss rather than a bug.
-- Deleting a day sets its activities' `day_id` to NULL (back to the
-wishlist); deleting a trip cascades and destroys its activities. These
-cascade rules are product decisions, not defaults — don't change them
-to match a convention.
+- Reading days joins through the placement table, and both hops are LEFT
+JOIN — one so a day with nothing planned still comes back, one so the
+row survives. An INNER JOIN silently drops every empty day and every
+wishlist item, which reads as data loss rather than a bug.
+- Deleting a day cascades its placements and leaves the activities alone
+— they fall back to the wishlist. Deleting a trip cascades and destroys
+its activities outright. These cascade rules are product decisions, not
+defaults — don't change them to match a convention.
 - All timestamps are `timestamptz`. The app spans time zones.
 - Schema changes go through `db:generate` → review the emitted SQL →
 `db:migrate`. Never hand-write DDL against Neon and never edit a
