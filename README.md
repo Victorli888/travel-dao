@@ -115,7 +115,9 @@ Note that `drizzle/0000_*.sql` is a **descriptive no-op baseline** — its body
 is commented out, because those ten tables were hand-created against Neon
 before this repo had migrations. Against an existing database it applies
 nothing and simply records the starting point. For a **fresh** database,
-uncomment that file's body before running the command above.
+uncomment that file's body before running the command above — note that
+`0003` then drops seven of those ten again, leaving the five-table
+itinerary-planning schema.
 
 Then add yourself to the allow-list — signing in with Google is not enough:
 

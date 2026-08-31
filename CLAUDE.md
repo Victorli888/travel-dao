@@ -40,57 +40,70 @@ agentic Claude run that writes to Notion.
 
 ### Data model
 
-`lib/db/schema.ts` is the single source of truth — twelve tables, grouped
-in the file by concern:
+`lib/db/schema.ts` is the single source of truth — **five tables**,
+grouped in the file by concern:
 
 | Group | Tables |
 | --- | --- |
 | Access control | `allowed_emails` |
-| Reference data | `countries`, `cities`, `activity_categories` |
-| Trips | `trips`, `trip_destinations` |
-| Itinerary | `itinerary_days`, `itinerary_day_activities` |
+| Trips | `trips` |
+| Itinerary | `day_itineraries`, `day_itinerary_activities` |
 | Activities | `activities` |
-| Ratings | `user_activity_ratings`, `user_category_ratings` |
-| Audit | `ai_prompts` |
+
+**The schema is scoped to itinerary planning and nothing else.** Migration
+`0003` dropped seven tables — `countries`, `cities`, `activity_categories`,
+`trip_destinations`, `user_activity_ratings`, `user_category_ratings` and
+`ai_prompts`. Read that migration's header before adding anything back; it
+records what each one gave up. Their contents were snapshotted to
+`scratch/dropped-tables-backup-2026-08-30.json`.
+
+Three consequences worth knowing before you design against this:
+
+- **A trip has no geography.** No country, no city, no destination. A day is
+a trip and a date; where the traveller is that day is not recorded, and any
+UI that wants it must get it from the activities placed on the day.
+- **Nothing records rejection.** `user_activity_ratings.status` used to
+suppress a suggestion without deleting it. With it gone the agent cannot
+know what was already turned down.
+- **No prompt audit log.**
 
 **There is no `users` table.** Ownership is the signed-in email, carried
 as `user_email` and constrained against `allowed_emails`. Auth.js stores
 no user rows — the allow-list *is* the user table. Don't add a `users`
 table or an `owner_id`; join on the email.
 
-Ten of these tables were hand-created against Neon before the repo had
-migrations, so `drizzle/0000_*.sql` is a **descriptive no-op baseline**:
-its body is commented out because the tables already existed. It is
-recorded only so drizzle has a snapshot to diff against. A fresh database
-must be bootstrapped by uncommenting that file first. Everything from
-`0001` onward is real, generated, and applied.
+`drizzle/0000_*.sql` is a **descriptive no-op baseline**: its body is
+commented out because the ten tables it names were hand-created against Neon
+before the repo had migrations. It is recorded only so drizzle has a snapshot
+to diff against. Bootstrapping a fresh database means uncommenting it, then
+running `0001`-`0004` — which will create seven tables and immediately drop
+them again. Everything from `0001` onward is real, generated, and applied.
 
-- A day belongs to a **trip**, not to a `trip_destination`. On a
-multi-city trip the city is derived by comparing the day's date against
-each destination's arrive/depart range.
-- `UNIQUE (trip_id, date)` on `itinerary_days` makes "one row per
+- `UNIQUE (trip_id, date)` on `day_itineraries` makes "one row per
 calendar day" a database invariant, so day generation is a plain upsert.
-- **`itinerary_day_activities` is a join table, and the scheduling is
+- **`day_itinerary_activities` is a join table, and the scheduling is
 there — not on `activities`.** Day↔activity is many-to-many: the same
 activity can sit on several days (a two-day park ticket). An activity is
 one row with one identity, placed onto N days by N rows here. Never
-reintroduce `activities.day_id`; cloning the activity per day fragments
-`user_activity_ratings`, which is keyed on `activity_id`.
+reintroduce `activities.day_id`; cloning the activity per day duplicates
+the place's identity, its `priority_score` and every edit to it.
 - An activity with **no** placement row is an unscheduled wishlist item —
 by design, not missing data. Never filter it out by default and never
 treat it as an error state. The test is `NOT EXISTS (... )`, not a NULL
 column.
-- `itinerary_day_activities.position` is nullable and means *unordered*,
+- `day_itinerary_activities.position` is nullable and means *unordered*,
 not first. It lives on the placement, not the activity, because ordering
 is a property of the pairing — the same activity is first on one day and
 third on another.
 - `UNIQUE (day_id, activity_id)` blocks the same activity twice on one
 day: a morning visit plus an evening return is one row and a note, not
 two rows. That is a product call, reversible with a one-line migration.
-- Index operator classes in `schema.ts` (`text_ops` / `uuid_ops`) mirror
-what is physically in Postgres, including a few that read as mismatched.
-They are recorded, not chosen — "correcting" one emits a migration that
-rebuilds the index.
+- `activities.priority_score` is an integer 1-5 (`CHECK` enforced), and
+**NULL means not yet prioritised, not lowest**. It replaces the 0-10
+`user_activity_ratings.rating`; sort with `NULLS LAST`.
+- Index operator classes in `schema.ts` (`text_ops`) mirror what is
+physically in Postgres. They are recorded, not chosen — "correcting" one
+emits a migration that rebuilds the index.
 - Reading days joins through the placement table, and both hops are LEFT
 JOIN — one so a day with nothing planned still comes back, one so the
 row survives. An INNER JOIN silently drops every empty day and every
@@ -100,9 +113,15 @@ wishlist item, which reads as data loss rather than a bug.
 its activities outright. These cascade rules are product decisions, not
 defaults — don't change them to match a convention.
 - All timestamps are `timestamptz`. The app spans time zones.
+- Nothing stops a placement pairing a day from one trip with an activity
+from another — `day_itinerary_activities` has independent FKs and no
+constraint ties them to the same trip. `sql/validate-itinerary.sql` check 9
+demonstrates it. Closing it needs a composite FK carrying `trip_id`.
 - Schema changes go through `db:generate` → review the emitted SQL →
 `db:migrate`. Never hand-write DDL against Neon and never edit a
-migration that has already been applied.
+migration that has already been applied. Note `db:migrate` **swallows
+errors and exits 1 silently** — if it prints no success line, replay the
+migration through `psql` to see the actual failure.
 
 
 
@@ -127,6 +146,7 @@ or in the orchestrator.
 | `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
 | `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
+| `sql/`                         | Raw-SQL validation against the schema. `validate-itinerary.sql` builds a fake trip, asserts the Data model invariants above, and ROLLBACKs — it writes nothing and is never imported by app code. |
 
 
 
