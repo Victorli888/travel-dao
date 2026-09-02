@@ -117,6 +117,26 @@ defaults — don't change them to match a convention.
 from another — `day_itinerary_activities` has independent FKs and no
 constraint ties them to the same trip. `sql/validate-itinerary.sql` check 9
 demonstrates it. Closing it needs a composite FK carrying `trip_id`.
+- **Every mutation in `lib/itinerary/` is a single SQL statement.** The Neon
+HTTP driver has no interactive transactions — `db.transaction()` on
+`neon-http` only takes the array-batch form — so a multi-statement write
+that half-fails leaves a trip with four days and no error anywhere. Day
+generation is one multi-row `INSERT ... ON CONFLICT DO NOTHING`; placements
+are one `INSERT ... SELECT` whose JOIN through `trips` *is* the
+authorization check. A read before a write is fine (nothing is written yet);
+a second write is not. Needing genuine multi-statement atomicity is the
+trigger to adopt `drizzle-orm/neon-serverless`, not to write a bare
+sequence.
+- **`lib/itinerary/` enforces what `day_itinerary_activities` cannot.** The
+join table has two independent FKs and no composite key carrying `trip_id`,
+so `placements.ts` proves same-trip in its JOIN. That is a weaker guarantee
+than the database's, and `sql/validate-itinerary.sql` check 9 will keep
+reporting the gap until a migration closes it.
+- **``db.execute(sql`...`)`` bypasses Drizzle's column mappers.** The
+neon-http driver disables Postgres' own timestamp parsers and relies on
+those mappers, so a `created_at` read through `db.execute` is a string, not
+a `Date`. The guarded inserts in `placements.ts` return only an id and
+re-select the row through the builder for exactly this reason.
 - Schema changes go through `db:generate` → review the emitted SQL →
 `db:migrate`. Never hand-write DDL against Neon and never edit a
 migration that has already been applied. Note `db:migrate` **swallows
@@ -143,6 +163,7 @@ or in the orchestrator.
 | `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
 | `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
+| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
 | `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
 | `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
