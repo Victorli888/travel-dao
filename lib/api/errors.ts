@@ -33,3 +33,22 @@ export class UpstreamAuthError extends AppError {
     super(message, 500, "upstream_auth");
   }
 }
+
+/**
+ * The row does not exist, or is not this user's to see. The two are the same
+ * error on purpose: every query is scoped by `user_email`, so a miss and a
+ * trip belonging to someone else are indistinguishable, and answering them
+ * differently would leak whether another user's trip exists.
+ */
+export class NotFoundError extends AppError {
+  constructor(message: string) {
+    super(message, 404, "not_found");
+  }
+}
+
+/** The write collides with a row that is already there. */
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(message, 409, "conflict");
+  }
+}
