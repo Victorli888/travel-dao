@@ -84,6 +84,8 @@ export const dayItineraries = pgTable(
     id: uuid("id").defaultRandom().primaryKey().notNull(),
     tripId: uuid("trip_id").notNull(),
     date: date("date").notNull(),
+    /** User-given label, e.g. "Temple day". NULL = unnamed; fall back to the date. */
+    name: text("name"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

@@ -17,7 +17,7 @@ import type { ActivityRow, Day } from "./types";
 const CREATED = new Date("2026-08-01T00:00:00Z");
 
 function day(id: string, date: string): Day {
-  return { id, tripId: "trip-1", date, createdAt: CREATED };
+  return { id, tripId: "trip-1", date, name: null, createdAt: CREATED };
 }
 
 function activity(id: string, name: string, over: Partial<ActivityRow> = {}) {

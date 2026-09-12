@@ -23,6 +23,7 @@ export {
   listDays,
   generateDays,
   addDay,
+  renameDay,
   removeDay,
 } from "./days";
 
@@ -67,6 +68,7 @@ export type {
 export {
   ActivityDraftSchema,
   CreateTripSchema,
+  DayNameSchema,
   PriorityScoreSchema,
   TripStatusSchema,
   UpdateActivitySchema,

@@ -46,6 +46,12 @@ const ActivityName = z
   .min(1, "Give the activity a name.")
   .max(200, "That activity name is too long.");
 
+const DayName = z
+  .string()
+  .trim()
+  .min(1, "Give the day a name.")
+  .max(200, "That day name is too long.");
+
 const ActivitySummary = z
   .string()
   .trim()
@@ -125,6 +131,16 @@ export type UpdateActivityInput = z.infer<typeof UpdateActivitySchema>;
 export const UuidSchema = z.uuid("That is not a valid id.");
 
 export const DateSchema = IsoDate;
+
+/**
+ * A day's label. The column is unbounded `text`, so the 200-character cap is
+ * this file's call, not the database's.
+ *
+ * `null` means *unnamed* — the day falls back to its date — so clearing a
+ * name is an explicit null. An empty string would be a second spelling of
+ * the same state, which is why `.min(1)` rejects it.
+ */
+export const DayNameSchema = DayName.nullable();
 
 /** A whole day's order. Ids absent from the list keep their current position. */
 export const ReorderSchema = z

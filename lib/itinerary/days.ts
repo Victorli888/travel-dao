@@ -10,7 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { listActivities } from "./activities";
 import { groupDays, placedActivityIds } from "./shape";
-import { DateSchema, UuidSchema, parseInput } from "./schemas";
+import { DateSchema, DayNameSchema, UuidSchema, parseInput } from "./schemas";
 import { getTrip } from "./trips";
 import type { Day, Itinerary } from "./types";
 
@@ -30,6 +30,7 @@ const dayColumns = {
   id: dayItineraries.id,
   tripId: dayItineraries.tripId,
   date: dayItineraries.date,
+  name: dayItineraries.name,
   createdAt: dayItineraries.createdAt,
 };
 
@@ -181,6 +182,35 @@ export async function addDay(
     })
     .returning(dayColumns);
 
+  return row;
+}
+
+/**
+ * Names a day, or clears the name with an explicit `null` — an unnamed day
+ * falls back to its date, which is what the nullable column is for.
+ *
+ * One statement. `ownsDay` proves the trip is the caller's inside the
+ * `WHERE`, so there is no read-then-write window and nothing to half-apply
+ * on a driver that cannot roll back.
+ *
+ * Zero rows back means missing *or* not yours; both are `NotFoundError`,
+ * since telling them apart reveals which day ids exist.
+ */
+export async function renameDay(
+  userEmail: string,
+  dayId: string,
+  name: unknown,
+): Promise<Day> {
+  const id = parseInput(UuidSchema, dayId);
+  const value = parseInput(DayNameSchema, name);
+
+  const [row] = await getDb()
+    .update(dayItineraries)
+    .set({ name: value })
+    .where(and(eq(dayItineraries.id, id), ownsDay(userEmail)))
+    .returning(dayColumns);
+
+  if (!row) throw new NotFoundError(DAY_NOT_FOUND);
   return row;
 }
 

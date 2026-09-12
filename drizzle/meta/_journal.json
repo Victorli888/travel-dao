@@ -57,6 +57,13 @@
       "when": 1788202867551,
       "tag": "0007_unknown_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789172128772,
+      "tag": "0008_thin_centennial",
+      "breakpoints": true
     }
   ]
 }
