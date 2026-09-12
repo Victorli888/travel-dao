@@ -91,6 +91,11 @@ the place's identity, its `priority_score` and every edit to it.
 by design, not missing data. Never filter it out by default and never
 treat it as an error state. The test is `NOT EXISTS (... )`, not a NULL
 column.
+- **`day_itineraries.name` is a user-given label, and NULL means *unnamed*.**
+A day's identity is still `(trip_id, date)` — the name is decoration the UI
+falls back from to the date. Clearing one is an explicit `null`, never `""`;
+`DayNameSchema` rejects the empty string so there is one spelling of the
+state. The 200-character cap lives in Zod, not in the column.
 - `day_itinerary_activities.position` is nullable and means *unordered*,
 not first. It lives on the placement, not the activity, because ordering
 is a property of the pairing — the same activity is first on one day and
