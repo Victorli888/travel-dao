@@ -19,6 +19,7 @@ import {
   moveActivityToDay,
   placeActivityOnDay,
   removeDay,
+  renameDay,
   reorderDay,
   unplaceActivity,
   updateActivity,
@@ -194,6 +195,29 @@ live("itinerary data access layer", () => {
     expect(same.id).toBe(extra.id);
   });
 
+  it("names a day, and clears the name with an explicit null", async () => {
+    const trip = await createTrip(EMAIL, {
+      name: "Japan 2027",
+      startDate: "2027-04-01",
+      endDate: "2027-04-02",
+    });
+    const [first] = await generateDays(EMAIL, trip.id);
+
+    // A generated day starts unnamed; the UI falls back to the date.
+    expect(first.name).toBeNull();
+
+    const named = await renameDay(EMAIL, first.id, "  Temple day  ");
+    expect(named.name).toBe("Temple day");
+
+    // `getItinerary` selects an explicit column list, so a name that never
+    // reaches this assertion means the list was not updated.
+    const itinerary = await getItinerary(EMAIL, trip.id);
+    expect(itinerary!.days[0].name).toBe("Temple day");
+
+    const cleared = await renameDay(EMAIL, first.id, null);
+    expect(cleared.name).toBeNull();
+  });
+
   it("leaves out-of-range days alone when the trip is shortened", async () => {
     const trip = await createTrip(EMAIL, {
       name: "Japan 2027",
@@ -255,8 +279,16 @@ live("itinerary data access layer", () => {
       addActivity(OTHER, trip.id, TEAMLAB),
     ).rejects.toThrow(NotFoundError);
 
+    // A day carries no email of its own — `renameDay` proves ownership by
+    // reaching through the trip, so this is the weaker guarantee worth a test.
+    const day = await addDay(EMAIL, trip.id, "2027-04-01");
+    await expect(renameDay(OTHER, day.id, "Stolen")).rejects.toThrow(
+      NotFoundError,
+    );
+
     // Still intact and still ours.
     expect((await getTrip(EMAIL, trip.id))!.name).toBe("Japan 2027");
+    expect((await listDays(EMAIL, trip.id))[0].name).toBeNull();
   });
 
   it("applies a patch field by field, and clears on explicit null", async () => {

@@ -3,6 +3,7 @@ import { ValidationError } from "@/lib/api/errors";
 import {
   ActivityDraftSchema,
   CreateTripSchema,
+  DayNameSchema,
   PriorityScoreSchema,
   UpdateTripSchema,
   parseInput,
@@ -99,6 +100,26 @@ describe("UpdateTripSchema", () => {
 
   it("rejects an empty patch", () => {
     expect(() => parseInput(UpdateTripSchema, {})).toThrow(ValidationError);
+  });
+});
+
+describe("DayNameSchema", () => {
+  it("trims the name", () => {
+    expect(parseInput(DayNameSchema, "  Temple day  ")).toBe("Temple day");
+  });
+
+  it("accepts null, which means unnamed rather than blank", () => {
+    expect(parseInput(DayNameSchema, null)).toBeNull();
+  });
+
+  it("rejects an empty name — clearing one is an explicit null", () => {
+    expect(() => parseInput(DayNameSchema, "   ")).toThrow(ValidationError);
+  });
+
+  it("caps the length, since the column itself is unbounded text", () => {
+    expect(() => parseInput(DayNameSchema, "x".repeat(201))).toThrow(
+      ValidationError,
+    );
   });
 });
 
