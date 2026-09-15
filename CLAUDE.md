@@ -35,8 +35,16 @@ schema.
 
 ## Architecture
 
-Single-feature Next.js 15 App Router app: one input, one API route, one
-agentic Claude run that writes to Notion.
+Next.js 15 App Router app with two features and one route each:
+
+| Route | Feature |
+| --- | --- |
+| `/` | The Itinerary Planning landing page. Static marketing, no data access. |
+| `/plan` | The Day Planner. A holding page today; the screens land here. |
+| `/write-to-notion` | One input, one API route, one agentic Claude run that writes to Notion. |
+
+The Notion flow is described below and is unchanged. The planner has a full
+data layer (`lib/itinerary/`) and, so far, no UI.
 
 ### Data model
 
@@ -165,6 +173,7 @@ or in the orchestrator.
 | `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs.                |
 | `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`.                            |
 | `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
+| `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
 | `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
@@ -233,8 +242,39 @@ interface, and augmenting a re-export does not merge.
 ### Styling
 
 Tailwind v4, no `tailwind.config.ts`. Design tokens live in an `@theme`
-block in `app/globals.css`: `canvas`, `surface`, `surface-raised`, `line`,
-`line-strong`, and the `accent` / `accent-bright` / `accent-light` /
-`accent-pale` ramp. **Components use these tokens** (`bg-surface`,
-`border-line`, `bg-accent`) — do not reintroduce hardcoded hexes or
-`white/10`.
+block in `app/globals.css`. **Components use these tokens** (`bg-surface`,
+`border-line`, `bg-tao`) — do not reintroduce hardcoded hexes or `white/10`.
+
+There are **two palettes**, and they are separately named rather than swapped
+behind a theme switch. The roles do not map across grounds — `accent-pale` is
+legible text on dark and a wash on light — so one set of names carrying both
+would silently produce unreadable pairings. Which family a component uses is
+also how you tell, by reading it, which half of the app it belongs to.
+
+| Family | Tokens | Used by |
+| --- | --- | --- |
+| Dark | `canvas`, `surface`, `surface-raised`, `line`, `line-strong`, `accent` / `accent-bright` / `accent-light` / `accent-pale` | `/write-to-notion` and the auth pages |
+| Light | `paper` / `paper-raised`, `ink` / `ink-muted` / `ink-subtle`, `rule` / `rule-strong`, `tao` / `tao-bright` / `tao-soft` / `tao-wash`, `ember` | `/` and `/plan` |
+
+The light family comes from the Day Planner design system. Two conventions
+in it are load-bearing rather than decorative:
+
+- **`ember` is the second accent and appears at most once per page.** On the
+  landing that is the hover on the one link out to the Notion flow. Spending it
+  more widely is what makes the first accent stop reading as an accent.
+- **Freestanding rules fade out at both ends** over one 48px baseline unit —
+  the `.rule-fade` class in `globals.css`. Box outlines and in-control
+  separators stay square; those are `border-rule`.
+
+`body` paints the dark ground. A light page puts `tao-ground` on its outermost
+element, and `body:has(.tao-ground)` swaps the whole ground — the `:has()` rule
+exists so nothing bleeds through at the overscroll edges, which a wrapper
+`<div>` cannot prevent.
+
+`paper` is plain white, so a panel that needs to read as raised takes
+`paper-raised` plus `border-rule` — there is deliberately no third near-white
+token, because one that equalled the ground would look like a surface in the
+palette and render as nothing on the page.
+
+Inter is loaded in `app/layout.tsx` as `--font-inter` and reaches only what
+asks for it via `font-tao`; the dark pages keep the system stack.
