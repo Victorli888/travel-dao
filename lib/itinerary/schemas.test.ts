@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ValidationError } from "@/lib/api/errors";
 import {
   ActivityDraftSchema,
+  CreateDatedTripSchema,
   CreateTripSchema,
   DayNameSchema,
   PriorityScoreSchema,
@@ -82,6 +83,62 @@ describe("CreateTripSchema", () => {
   it("rejects a status outside the four the CHECK allows", () => {
     expect(() =>
       parseInput(CreateTripSchema, { name: "Japan", status: "cancelled" }),
+    ).toThrow(ValidationError);
+  });
+});
+
+/**
+ * The form's schema, not the database's. It is deliberately stricter than
+ * `CreateTripSchema` — these tests are what keeps the difference on purpose
+ * rather than by accident.
+ */
+describe("CreateDatedTripSchema", () => {
+  const TRIP = {
+    name: "Japan 2027",
+    startDate: "2027-04-01",
+    endDate: "2027-04-09",
+  };
+
+  it("accepts a name with both dates", () => {
+    expect(parseInput(CreateDatedTripSchema, TRIP)).toEqual(TRIP);
+  });
+
+  it("accepts a single-day trip where start and end match", () => {
+    const trip = parseInput(CreateDatedTripSchema, {
+      ...TRIP,
+      endDate: TRIP.startDate,
+    });
+    expect(trip.endDate).toBe(TRIP.startDate);
+  });
+
+  it("rejects an empty name", () => {
+    expect(() => parseInput(CreateDatedTripSchema, { ...TRIP, name: " " })).toThrow(
+      ValidationError,
+    );
+  });
+
+  it.each(["startDate", "endDate"] as const)(
+    "requires %s, where CreateTripSchema does not",
+    (field) => {
+      const rest: Record<string, unknown> = { ...TRIP };
+      delete rest[field];
+      expect(() => parseInput(CreateDatedTripSchema, rest)).toThrow(
+        ValidationError,
+      );
+      // The looser schema still takes it — the strictness belongs to the form.
+      expect(() => parseInput(CreateTripSchema, rest)).not.toThrow();
+    },
+  );
+
+  it("rejects a null date, which the looser schema reads as 'no date'", () => {
+    expect(() =>
+      parseInput(CreateDatedTripSchema, { ...TRIP, endDate: null }),
+    ).toThrow(ValidationError);
+  });
+
+  it("rejects an end date before the start date", () => {
+    expect(() =>
+      parseInput(CreateDatedTripSchema, { ...TRIP, endDate: "2027-03-01" }),
     ).toThrow(ValidationError);
   });
 });

@@ -60,6 +60,7 @@ export type {
 
 export type {
   ActivityDraft,
+  CreateDatedTripInput,
   CreateTripInput,
   UpdateActivityInput,
   UpdateTripInput,
@@ -67,6 +68,7 @@ export type {
 
 export {
   ActivityDraftSchema,
+  CreateDatedTripSchema,
   CreateTripSchema,
   DayNameSchema,
   PriorityScoreSchema,

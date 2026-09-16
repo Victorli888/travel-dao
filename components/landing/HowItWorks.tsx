@@ -12,11 +12,11 @@ const STEPS = [
   {
     action: "Add",
     title: "Add the activities",
-    body: "Six pins on a map tell you in a second whether the day doubles back across the city. Drop what does not belong before you spend a morning on it.",
+    body: "Sets pins on a map tell you in a second whether the day doubles back across the city. Drop what does not belong before you spend a morning on it.",
   },
   {
     action: "Plan",
-    title: "Let Travel Tao work out the best path",
+    title: "Let Travel Tao work out the best plan for you.",
     body: "Opening hours, meal times, a booking you cannot move, and how long it takes to get between them. Adjust any stop and the rest shift with it.",
   },
 ];

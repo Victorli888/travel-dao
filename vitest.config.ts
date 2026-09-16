@@ -19,5 +19,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts", "app/**/*.test.ts"],
+    // Deliberately not UTC. `date` columns are bare `YYYY-MM-DD`, and a
+    // formatter that forgets `timeZone: "UTC"` renders the day before for
+    // anyone west of Greenwich. Under a UTC runner that bug passes its tests.
+    env: { TZ: "America/Los_Angeles" },
   },
 });

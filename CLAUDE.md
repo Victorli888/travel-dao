@@ -40,11 +40,29 @@ Next.js 15 App Router app with two features and one route each:
 | Route | Feature |
 | --- | --- |
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. |
-| `/plan` | The Day Planner. A holding page today; the screens land here. |
+| `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
+| `/plan/[tripId]` | One trip: a column per day. The Activity Bank, Plan It and the activity modal land here. |
 | `/write-to-notion` | One input, one API route, one agentic Claude run that writes to Notion. |
 
 The Notion flow is described below and is unchanged. The planner has a full
-data layer (`lib/itinerary/`) and, so far, no UI.
+data layer (`lib/itinerary/`) and the first screen on top of it.
+
+**The planner has no API routes and should not grow any.** `/plan` and
+`/plan/[tripId]` are Server Components that call `lib/itinerary/` directly,
+and the one mutation is the Server Action in `app/plan/actions.ts`. See the
+note in `lib/itinerary/index.ts`. The `ok()`/`fail()` envelope in
+`lib/api/responses.ts` belongs to the Notion flow — it is typed to
+`ResearchResponse` and does not generalise.
+
+**Creating a trip and generating its days are two requests, on purpose.**
+`createTripAction` performs exactly one write and redirects;
+`/plan/[tripId]` reads the days and calls `generateDays` when it finds none.
+This is the single-statement rule under Data model, applied across a
+boundary: the Neon HTTP driver has no interactive transactions, so a second
+write in the action could half-fail in silence. `generateDays` is one
+`INSERT ... ON CONFLICT DO NOTHING`, which makes the page idempotent and a
+reload a retry. Merging them back into the action would look tidier and
+would reintroduce exactly the failure the rule exists to prevent.
 
 ### Data model
 
@@ -126,6 +144,13 @@ wishlist item, which reads as data loss rather than a bug.
 its activities outright. These cascade rules are product decisions, not
 defaults — don't change them to match a convention.
 - All timestamps are `timestamptz`. The app spans time zones.
+- **`date` columns are bare `YYYY-MM-DD` and must be formatted in UTC.**
+`new Date("2026-04-12")` parses as UTC midnight, so an `Intl.DateTimeFormat`
+without `timeZone: "UTC"` renders the *previous* day for every reader west of
+Greenwich. `lib/itinerary/format.ts` is the one place this is done — use it
+rather than formatting a date inline. `eachDate` in `days.ts` steps in UTC
+for the same reason, and `vitest.config.ts` pins `TZ` to a western zone so a
+dropped `timeZone` fails a test instead of shipping.
 - Nothing stops a placement pairing a day from one trip with an activity
 from another — `day_itinerary_activities` has independent FKs and no
 constraint ties them to the same trip. `sql/validate-itinerary.sql` check 9
@@ -173,11 +198,13 @@ or in the orchestrator.
 | `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs.                |
 | `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`.                            |
 | `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
+| `components/planner/`          | Presentational views for `/plan`. Same rule as `components/research/`: `NewTripForm` is the one container — it holds the three field values (to decide whether submit is live) and the `useActionState` lifecycle, and delegates rendering to `NewTripFormView`. |
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
 | `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
-| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
+| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
+| `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). |
 | `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
 | `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |

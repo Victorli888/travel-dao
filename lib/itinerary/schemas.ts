@@ -84,6 +84,24 @@ export const CreateTripSchema = z
 export type CreateTripInput = z.infer<typeof CreateTripSchema>;
 
 /**
+ * What the "create a trip" form sends. Stricter than `CreateTripSchema` on
+ * purpose: the planner lays out a column per day, and it cannot do that
+ * without both ends of the range, so the form demands them.
+ *
+ * The data layer stays permissive — a dateless trip is still a valid idea,
+ * and `listTrips` sorts those last.
+ */
+export const CreateDatedTripSchema = z
+  .object({
+    name: TripName,
+    startDate: IsoDate,
+    endDate: IsoDate,
+  })
+  .refine(endNotBeforeStart, DATE_ORDER);
+
+export type CreateDatedTripInput = z.infer<typeof CreateDatedTripSchema>;
+
+/**
  * An absent key means *leave it alone*; an explicit `null` means *clear it*.
  * Zod v4 omits absent optional keys, which is what lets callers use `in`.
  *
