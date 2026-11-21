@@ -28,6 +28,7 @@ function activity(id: string, name: string, over: Partial<ActivityRow> = {}) {
     name,
     summary: `About ${name}`,
     address: null,
+    area: null,
     lat: null,
     lng: null,
     hoursOperation: null,

@@ -128,6 +128,8 @@ export const ActivityDraftSchema = z.object({
   name: ActivityName,
   summary: ActivitySummary,
   address: z.string().trim().max(500).nullable().optional(),
+  /** The neighbourhood, not a slice of `address`. 200 is this file's cap. */
+  area: z.string().trim().max(200).nullable().optional(),
   lat: Latitude.nullable().optional(),
   lng: Longitude.nullable().optional(),
   hoursOperation: z.string().trim().max(500).nullable().optional(),

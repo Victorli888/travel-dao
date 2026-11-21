@@ -87,6 +87,7 @@ export async function addActivity(
       name: draft.name,
       summary: draft.summary,
       address: draft.address ?? null,
+      area: draft.area ?? null,
       // `numeric` is a string on the wire in both directions.
       lat: draft.lat == null ? null : String(draft.lat),
       lng: draft.lng == null ? null : String(draft.lng),
@@ -117,6 +118,7 @@ export async function updateActivity(
   if ("name" in patch) set.name = patch.name;
   if ("summary" in patch) set.summary = patch.summary;
   if ("address" in patch) set.address = patch.address ?? null;
+  if ("area" in patch) set.area = patch.area ?? null;
   if ("lat" in patch) set.lat = patch.lat == null ? null : String(patch.lat);
   if ("lng" in patch) set.lng = patch.lng == null ? null : String(patch.lng);
   if ("hoursOperation" in patch) {

@@ -70,14 +70,15 @@ export async function listDays(
 }
 
 /**
- * The whole plan: the trip, its days with their activities, and whatever is
- * on no day at all.
+ * The whole plan: the trip, every activity on it, its days with their
+ * activities, and whatever is on no day at all.
  *
  * **Both hops are LEFT JOIN** — one so an empty day still comes back, one so
  * the row survives an absent placement. An INNER JOIN silently drops every
  * empty day, which reads as data loss rather than a bug.
  *
- * `unscheduled` is derived from the same rows, so both halves always agree.
+ * `activities` and `unscheduled` are both derived from one `listActivities`
+ * snapshot, so the superset and its complement can never disagree.
  */
 export async function getItinerary(
   userEmail: string,
@@ -113,6 +114,11 @@ export async function getItinerary(
 
   return {
     trip,
+    // `all` is returned as well as filtered: it is the canonical order the
+    // Activity Bank lists in, and re-deriving it from `days` + `unscheduled`
+    // would both re-implement the SQL sort and double-count an activity
+    // sitting on two days.
+    activities: all,
     days: groupDays(rows),
     unscheduled: all.filter((activity) => !placed.has(activity.id)),
   };

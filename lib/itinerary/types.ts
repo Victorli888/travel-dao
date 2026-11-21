@@ -46,6 +46,12 @@ export type DayWithActivities = Day & { activities: PlacedActivity[] };
  */
 export type Itinerary = {
   trip: Trip;
+  /**
+   * Every activity on the trip, placed or not, in the order `listActivities`
+   * gives them. `unscheduled` is the complement of this list over the same
+   * snapshot, not a second, independent one.
+   */
+  activities: Activity[];
   days: DayWithActivities[];
   unscheduled: Activity[];
 };
