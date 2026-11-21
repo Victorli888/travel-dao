@@ -1,0 +1,80 @@
+# Project status
+
+**Last updated: 2026-11-11.**
+Update this when a feature lands, a decision is made, or a branch is merged.
+Change the date when you do.
+
+> Owns: where the project is right now. Does not own: how things work
+> ([architecture.md](architecture.md)) or the rules (`CLAUDE.md`).
+
+---
+
+## Branch state
+
+| Branch | State |
+| --- | --- |
+| `main` | The Notion research app, plus auth (PR #3) and the layered-architecture refactor. |
+| `feat/itinerary-planning` | **Active.** 18 commits ahead of `main`, no PR open. As of 2026-11-11 the last 5 commits (`03fadf4` "name a day" through `bb87432` "Trip Creation Page") are not pushed to `origin`. |
+| `feat/brainstorm` | 2 commits from 2026-05-05 ("Discover" page, AI activity generation). Never merged. Probably obsolete: it was built on tables that migration `0003` dropped. Decide whether to delete it. |
+| `refactor/layered-architecture`, `feat/auth-login` | Already merged into `main`. Safe to delete. |
+
+---
+
+## Done (committed on `feat/itinerary-planning`)
+
+- **Schema cut to itinerary planning only.** Migration `0003` dropped seven
+  tables, leaving five: `allowed_emails`, `trips`, `day_itineraries`,
+  `day_itinerary_activities`, `activities`. Backups are in `scratch/`.
+- **The data layer, `lib/itinerary/`.** Trips, days, activities, placements,
+  reordering, naming a day. Every write is a single SQL statement. Tests:
+  `shape`, `schemas`, `format` and `pg-errors` are pure unit tests, and
+  `crud.test.ts` is the live database suite.
+- **Landing page at `/`.** The Notion tool moved to `/write-to-notion`.
+- **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
+  Frame 0.
+- **`/plan/[tripId]`**: one column per day. Days are generated on first view.
+
+## In progress (uncommitted as of 2026-11-11)
+
+**The Activity Bank, wireframe Frame 1.** A read-only dialog over every
+activity saved for the trip, with diacritic-insensitive search.
+
+- `activities.area` column (the neighbourhood) and migration
+  `drizzle/0009_ambiguous_the_anarchist.sql`.
+- `lib/itinerary/bank.ts` + `bank.test.ts`.
+- `components/planner/ActivityBank.tsx`, `ActivityBankView.tsx`,
+  `fieldStyles.ts`.
+- Day columns now list the activities placed on them.
+- `CLAUDE.md` updated to match.
+
+Tests pass and `tsc` is clean on this WIP. **Not verified: whether `0009` has
+been applied to Neon.** If it hasn't, `/plan/[tripId]` fails when it selects
+`area`. Check before committing:
+`SELECT column_name FROM information_schema.columns WHERE table_name = 'activities' AND column_name = 'area';`
+
+## Next, in order
+
+1. **Place an activity on a day** from the UI. `placeActivityOnDay` /
+   `appendActivityToDay` already exist; this needs a Server Action and UI.
+2. **Create an activity**, the Activity Modal (Frame 3, "Save It").
+   `addActivity` + `ActivityDraftSchema` exist.
+3. **Plan It**, the Itinerary Day (Frame 2).
+4. **Drag-to-reorder within a day.** `reorderDay` already renumbers a day in
+   one statement.
+
+## Open decisions
+
+| Decision | Status | Where it's written up |
+| --- | --- | --- |
+| **Step 0**: should the research agent save activities to Postgres (A, recommended) or keep writing only to Notion (B)? | Open. Not blocking yet, but it blocks rejection memory. | `Itinerary-implementation-plan.md`, Step 0 |
+| **Rejection memory**: remember activities the user turned down so they aren't suggested again. | Open. Needs Step 0 = A first. | `CLAUDE.md` → Data model ("Nothing records rejection") |
+| **Activity identity key**: the same real place regenerated becomes a second row. | Open. | `Itinerary-planning.md`, "Known issue" |
+| **Composite FK** so a placement can't pair a day and an activity from different trips. | Open. The data layer enforces it for now. | `CLAUDE.md` → Data model; `sql/validate-itinerary.sql` check 9 |
+
+## Loose ends
+
+- `README.md` still describes only the Notion app. It doesn't mention the
+  planner.
+- No React component tests. Views are verified by browser only.
+- Deployment is unproven (the MCP subprocess vs serverless). See the README
+  "Known gaps".
