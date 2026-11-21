@@ -26,7 +26,7 @@ frames. "Frame N" is page N+1.
 | Frame | Screen | Where it lives | Status |
 | --- | --- | --- | --- |
 | 0 | Trip header: trip name, Departure and Return dates | `/plan` | Built |
-| 1 | Activity Bank: type chips filtering a grid of activities, plus "Add Activity (+)" | Dialog on `/plan/[tripId]` | Read-only + search built (uncommitted). No type chips, since there are no categories in the schema. |
+| 1 | Activity Bank: type chips filtering a grid of activities, plus "Add Activity (+)" | Dialog on `/plan/[tripId]` | Read-only + search built. No type chips, since there are no categories in the schema. |
 | 2 | Itinerary Day: a day's content and a "Plan It" button | `/plan/[tripId]` | Day columns built. Plan It not started. |
 | 3 | Activity Modal: an activity's content and a "Save It" button | Not built | Not started |
 

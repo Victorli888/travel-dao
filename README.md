@@ -1,17 +1,36 @@
 # Dao 道
 
-Describe a place in one line and it lands in your Notion travel planner, researched
-and filed under the right city and category.
+A personal travel planner with two features:
 
-You type `Patisserie Rau, 169 Higashiyama, Yamashina Ward, Kyoto 607-8322, Japan`.
+- **Day Planner** (`/plan`): plan a trip day by day. Name a trip, set its dates,
+  get one column per day, and keep every activity saved for the trip in an
+  Activity Bank. Its data lives in Neon Postgres.
+- **Write to Notion** (`/write-to-notion`): describe a place in one line and it
+  lands in your Notion travel planner, researched and filed under the right
+  city and category.
+
+For Write to Notion, you type
+`Patisserie Rau, 169 Higashiyama, Yamashina Ward, Kyoto 607-8322, Japan`.
 Claude confirms what actually sits at that address, writes a summary and opening
 hours, picks a category, and creates the Notion entry at
-`Kyoto > Good Eats > Dessert > Patisserie Rau`. Notion is the source of truth —
-the app itself stores nothing but the allow-list of who may sign in.
+`Kyoto > Good Eats > Dessert > Patisserie Rau`. For this feature Notion is the
+source of truth; nothing it researches is saved to Postgres yet.
+
+`/` is a landing page that introduces the planner.
 
 ---
 
 ## Current features
+
+**Day Planner** *(in progress: see `docs/status.md`)*
+- Create a trip from a name and two dates, or reopen one you started.
+- Each trip gets one column per calendar day, generated the first time you open
+  it. A day can be given a name; without one it shows its date.
+- The Activity Bank is a read-only dialog over every activity saved for the
+  trip, with search that ignores accents.
+- Not built yet: adding an activity from the UI, placing one on a day, and
+  reordering a day. The data layer for all three exists in `lib/itinerary/`.
+  Until the UI does, the Activity Bank is empty.
 
 **Research and file a place**
 - One free-form input: place name plus full address.
@@ -142,12 +161,20 @@ npm run db:migrate  # apply pending migrations
 npm run db:studio   # Drizzle Studio
 ```
 
-Sign in at `/login` with an allow-listed Google account, then submit a place.
-The first call takes 20–50 seconds.
+Sign in at `/login` with an allow-listed Google account. Plan a trip at `/plan`,
+or submit a place at `/write-to-notion`, where the first call takes 20–50
+seconds.
 
 ---
 
 ## How it works
+
+**Day Planner.** `/plan` and `/plan/[tripId]` are Server Components that call
+`lib/itinerary/` directly, and writes are Server Actions; the planner has no API
+routes. Every write is a single SQL statement, because the Neon HTTP driver has
+no interactive transactions. `CLAUDE.md` → *Data model* has the rules.
+
+**Write to Notion:**
 
 ```
 ChatInput → ResearchPanel → useResearch.submit

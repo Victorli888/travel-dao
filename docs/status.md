@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated: 2026-11-11.**
+**Last updated: 2026-11-21.**
 Update this when a feature lands, a decision is made, or a branch is merged.
 Change the date when you do.
 
@@ -14,9 +14,11 @@ Change the date when you do.
 | Branch | State |
 | --- | --- |
 | `main` | The Notion research app, plus auth (PR #3) and the layered-architecture refactor. |
-| `feat/itinerary-planning` | **Active.** 18 commits ahead of `main`, no PR open. As of 2026-11-11 the last 5 commits (`03fadf4` "name a day" through `bb87432` "Trip Creation Page") are not pushed to `origin`. |
-| `feat/brainstorm` | 2 commits from 2026-05-05 ("Discover" page, AI activity generation). Never merged. Probably obsolete: it was built on tables that migration `0003` dropped. Decide whether to delete it. |
-| `refactor/layered-architecture`, `feat/auth-login` | Already merged into `main`. Safe to delete. |
+| `feat/itinerary-planning` | **Active, being merged.** 30 commits ahead of `main`, 0 behind, all pushed. The PR to `main` is "Planner, part 1". Merging before you can add an activity from the UI was decided on 2026-11-21; see [After merging to `main`](#after-merging-to-main). |
+| `refactor/layered-architecture`, `feat/auth-login`, `docs/consolidate-agent-docs` | Already merged (the last via PR #4, into `feat/itinerary-planning`). Safe to delete. |
+
+`feat/brainstorm` (AI activity generation, built on tables that `0003`
+dropped) no longer exists locally or on `origin`.
 
 ---
 
@@ -32,25 +34,36 @@ Change the date when you do.
 - **Landing page at `/`.** The Notion tool moved to `/write-to-notion`.
 - **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
   Frame 0.
-- **`/plan/[tripId]`**: one column per day. Days are generated on first view.
+- **`/plan/[tripId]`**: one column per day, listing the activities placed on
+  it. Days are generated on first view.
+- **The Activity Bank** (wireframe Frame 1): a read-only dialog over every
+  activity saved for the trip, with search that ignores accents. It brought the
+  `activities.area` column (the neighbourhood), migration
+  `drizzle/0009_ambiguous_the_anarchist.sql`, `lib/itinerary/bank.ts` and
+  `components/planner/ActivityBank*.tsx`.
+- **Docs.** `CLAUDE.md` is the single agent guide (`AGENTS.md` points to it),
+  `docs/` holds only feature-work context, and `.github/pr-template.md` is
+  the PR description format (PR #4).
 
-## In progress (uncommitted as of 2026-11-11)
+## After merging to `main`
 
-**The Activity Bank, wireframe Frame 1.** A read-only dialog over every
-activity saved for the trip, with diacritic-insensitive search.
+The 2026-11-21 merge goes ahead knowingly with these open. Do them first, in
+this order:
 
-- `activities.area` column (the neighbourhood) and migration
-  `drizzle/0009_ambiguous_the_anarchist.sql`.
-- `lib/itinerary/bank.ts` + `bank.test.ts`.
-- `components/planner/ActivityBank.tsx`, `ActivityBankView.tsx`,
-  `fieldStyles.ts`.
-- Day columns now list the activities placed on them.
-- `CLAUDE.md` updated to match.
-
-Tests pass and `tsc` is clean on this WIP. **Not verified: whether `0009` has
-been applied to Neon.** If it hasn't, `/plan/[tripId]` fails when it selects
-`area`. Check before committing:
-`SELECT column_name FROM information_schema.columns WHERE table_name = 'activities' AND column_name = 'area';`
+1. **Verify the merge.** None of these were run before merging:
+   - `npm test`, `npm run lint` and `npm run build`. The last recorded pass is
+     from 2026-11-11, before the Activity Bank was committed.
+   - Confirm migration `0009` is applied to Neon. If it isn't,
+     `/plan/[tripId]` fails when it selects `area`:
+     `SELECT column_name FROM information_schema.columns WHERE table_name = 'activities' AND column_name = 'area';`
+     No row means you should run `npm run db:migrate`. It fails without
+     printing an error, so if there's no success line, replay the migration
+     through `psql`.
+   - In a browser: sign in, create a trip, open it, open the Activity Bank, and
+     check that `/write-to-notion` still works at its new path.
+2. **Know the planner is incomplete on `main`.** You can create trips and see
+   their days, but nothing in the UI can add an activity yet, so the Activity
+   Bank is always empty. "Next, in order" items 1 and 2 below fix that.
 
 ## Next, in order
 
@@ -96,8 +109,6 @@ touch the itinerary tables.
 
 ## Loose ends
 
-- `README.md` still describes only the Notion app. It doesn't mention the
-  planner.
 - No React component tests. Views are verified by browser only.
 - Deployment is unproven (the MCP subprocess vs serverless). See the README
   "Known gaps".
