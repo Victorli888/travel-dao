@@ -1,6 +1,8 @@
-# [CLAUDE.md](http://CLAUDE.md)
+# CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code), and to any other
+coding agent, when working with code in this repository. It is the single
+agent guide: `AGENTS.md` only points here, so put new rules in this file.
 
 ## Project docs
 

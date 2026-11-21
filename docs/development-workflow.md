@@ -88,8 +88,11 @@ the empty state and the error state.
 ### 9. Commit and PR
 - A small stack of commits in dependency order. See
   [working-with-claude.md](working-with-claude.md#commits) for the format.
-- Push and open a PR to `main`. The PR description says what changed, why, and
-  how it was verified.
+- Push and open a PR to `main`. The PR description follows
+  [`.github/pr-template.md`](../.github/pr-template.md): fill every section,
+  and write "N/A" in one that doesn't apply rather than deleting it. Pass it
+  with `gh pr create --body-file`, since GitHub only applies a template
+  automatically when it's named `pull_request_template.md`.
 
 ---
 
