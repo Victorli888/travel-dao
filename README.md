@@ -186,8 +186,7 @@ Nothing here is scheduled — this is the parking lot.
       that permits long function timeouts.
 - [ ] `UpstreamAuthError` returns 500 where 502 is more accurate.
 - [ ] `git merge` / `git rebase` are unguarded relative to the commit policy in
-      `CHANGELIST.md`.
-- [ ] `tsconfig.tsbuildinfo` is tracked in git and churns on every build.
+      `docs/working-with-claude.md`.
 
 **Ideas**
 - [ ] Read back from Notion — list or search what you have already saved, instead
@@ -201,6 +200,6 @@ Nothing here is scheduled — this is the parking lot.
 
 ## Reference
 
-- `CHANGELIST.md` — the layered-architecture refactor: what changed, why, and the
-  tradeoffs behind each decision.
+- `docs/README.md` — the project docs index: status, product, architecture,
+  development workflow, and the ground rules for working with Claude.
 - `CLAUDE.md` — architecture guidance for working in this repo.

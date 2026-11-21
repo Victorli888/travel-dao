@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project docs
+
+This file holds the invariants. Process and status live in `docs/`
+(index: `docs/README.md`):
+
+- **Before starting work**, read `docs/status.md` (where things are) and
+  `docs/working-with-claude.md` (commits, what needs asking, what's never
+  allowed).
+- **Building a feature** follows `docs/development-workflow.md`, including its
+  Definition of Done.
+- **When a feature lands or a decision is made**, update `docs/status.md`.
+  When a new code rule emerges, add it here, not in `docs/`.
+
 ## Development Commands
 
 ```bash
@@ -41,7 +54,7 @@ Next.js 15 App Router app with two features and one route each:
 | --- | --- |
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
-| `/plan/[tripId]` | One trip: a column per day. The Activity Bank, Plan It and the activity modal land here. |
+| `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
 | `/write-to-notion` | One input, one API route, one agentic Claude run that writes to Notion. |
 
 The Notion flow is described below and is unchanged. The planner has a full
@@ -132,6 +145,13 @@ two rows. That is a product call, reversible with a one-line migration.
 - `activities.priority_score` is an integer 1-5 (`CHECK` enforced), and
 **NULL means not yet prioritised, not lowest**. It replaces the 0-10
 `user_activity_ratings.rating`; sort with `NULLS LAST`.
+- **`activities.area` is the neighbourhood, and it is not a slice of
+`address`.** "Pontochō", not "Kamogawa Park, Nakagyō-ku, Kyoto 604-8006". It
+is the Activity Bank's second line, and NULL means *not recorded* — the row
+omits the line rather than filling it. Deriving one from the other by
+splitting on commas is inventing geography by substring, which is the thing
+migration `0003` removed. The Claude lookup on the new-activity flow is what
+populates it; until then every row is NULL, which is correct, not missing.
 - Index operator classes in `schema.ts` (`text_ops`) mirror what is
 physically in Postgres. They are recorded, not chosen — "correcting" one
 emits a migration that rebuilds the index.
@@ -198,20 +218,35 @@ or in the orchestrator.
 | `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs.                |
 | `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`.                            |
 | `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
-| `components/planner/`          | Presentational views for `/plan`. Same rule as `components/research/`: `NewTripForm` is the one container — it holds the three field values (to decide whether submit is live) and the `useActionState` lifecycle, and delegates rendering to `NewTripFormView`. |
+| `components/planner/`          | Presentational views for `/plan`. Same rule as `components/research/`, and **two** containers hold to it: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle) and `ActivityBank` (a draft search string and two refs). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
 | `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
-| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
+| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
 | `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). |
 | `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
 | `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
 | `sql/`                         | Raw-SQL validation against the schema. `validate-itinerary.sql` builds a fake trip, asserts the Data model invariants above, and ROLLBACKs — it writes nothing and is never imported by app code. |
 
+**`lib/itinerary/index.ts` carries `server-only`, so the pure modules are
+imported by path — and for `bank.ts` that is load-bearing.** `shape`, `format`
+and `pg-errors` are deep-imported by convention; `bank.ts` must be, because
+`filterBankEntries` runs in the browser on every keystroke. A barrel import of
+it compiles and then fails at runtime.
 
-
+**The Activity Bank keeps no React `open` flag.** `ActivityBank` calls
+`showModal()` on a ref and lets the native `<dialog>` own its openness, so Esc
+and a React state variable cannot disagree; the dialog's `close` event is the
+one place every dismissal lands. That is also why the container stays inside
+the layer rule — a draft search string and two refs, nothing that outlives a
+keystroke. `<dialog>` then needs three things spelled out that are easy to undo:
+display utilities must be `open:`-prefixed (a bare `flex` outranks the UA's
+`display: none` and pins it open), the ground must be set explicitly (the UA
+paints `dialog` with `Canvas`/`CanvasText`, so `.tao-ground` does not reach in,
+and `::backdrop` inherits nothing), and padding belongs on the inner sections,
+since a backdrop click targets the `<dialog>` element itself.
 
 ### Request flow
 
