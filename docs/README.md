@@ -17,12 +17,11 @@ here after any break.
 
 | Doc | What it is |
 | --- | --- |
-| [Itinerary-data-layer-rationale.md](Itinerary-data-layer-rationale.md) | Why each file in `lib/itinerary/` is written the way it is, and which alternatives lost. |
-| [Itinerary-implementation-plan.md](Itinerary-implementation-plan.md) | The original step-by-step plan for the planner. Partly done; see its banner. |
 | [drizzle.md](drizzle.md) | The schema-change routine in this repo: generate → review → migrate. |
-| [drizzle-crash-course.md](drizzle-crash-course.md) | General Drizzle tutorial (EF Core → Drizzle). Not specific to this repo. |
-| [Local-postgres.md](Local-postgres.md) | Running a local Postgres for `psql` and `sql/validate-itinerary.sql`. |
-| [Itinerary-planning.md](Itinerary-planning.md) | **Superseded.** The first data-model sketch, before migration `0003`. |
+
+This folder holds only what's needed to build features here. Tutorials,
+learning notes and superseded plans don't belong in it; git history has the
+ones that used to be here.
 
 ## What lives where
 

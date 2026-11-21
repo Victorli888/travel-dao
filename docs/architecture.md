@@ -89,7 +89,7 @@ outlives a keystroke, or transform domain data.
 ## Decisions worth knowing before you change anything
 
 Each has a reason that isn't obvious from the code. The detail is in
-`CLAUDE.md` and [Itinerary-data-layer-rationale.md](Itinerary-data-layer-rationale.md).
+`CLAUDE.md`.
 
 1. **Every write is one SQL statement.** The Neon HTTP driver has no
    transactions, so a two-statement write can half-fail silently. Needing real

@@ -107,7 +107,7 @@ A yes covers that one action, not the next one like it.
   [product.md](product.md#the-wireframes).
 - **"The layer rule"**: `CLAUDE.md` → *Layers*.
 - **"Step 0"** is the agent-persistence decision in
-  [Itinerary-implementation-plan.md](Itinerary-implementation-plan.md).
+  [status.md](status.md#step-0-where-the-research-agent-saves).
 
 ## Where preferences go
 
