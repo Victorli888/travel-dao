@@ -202,6 +202,19 @@ describe("ActivityDraftSchema", () => {
       parseInput(ActivityDraftSchema, { ...DRAFT, priorityScore: 6 }),
     ).toThrow(ValidationError);
   });
+
+  it("trims an area and accepts null, which means not recorded", () => {
+    expect(parseInput(ActivityDraftSchema, { ...DRAFT, area: "  Gion  " }).area)
+      .toBe("Gion");
+    expect(parseInput(ActivityDraftSchema, { ...DRAFT, area: null }).area)
+      .toBeNull();
+  });
+
+  it("caps the area at 200 characters — this file's call, not the column's", () => {
+    expect(() =>
+      parseInput(ActivityDraftSchema, { ...DRAFT, area: "x".repeat(201) }),
+    ).toThrow(ValidationError);
+  });
 });
 
 describe("parseInput", () => {

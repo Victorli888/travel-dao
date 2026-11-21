@@ -132,6 +132,9 @@ live("itinerary data access layer", () => {
       teamlab.id,
     ]);
     expect(itinerary!.unscheduled).toEqual([]);
+    // The superset stays whole: placing an activity moves it out of
+    // `unscheduled`, never out of `activities`.
+    expect(itinerary!.activities.map((a) => a.id)).toEqual([teamlab.id]);
     // The empty days survive: an INNER JOIN would have dropped four of five.
     expect(itinerary!.days[1].activities).toEqual([]);
 
@@ -150,6 +153,13 @@ live("itinerary data access layer", () => {
     expect(reordered!.days[0].activities.map((a) => a.id)).toEqual([
       sensoji.id,
       teamlab.id,
+    ]);
+    // Reordering a day does not touch the bank's order: `activities` keeps
+    // `priority_score desc nulls last`, so the rated teamLab leads the unrated
+    // Senso-ji whichever way the day is arranged.
+    expect(reordered!.activities.map((a) => a.id)).toEqual([
+      teamlab.id,
+      sensoji.id,
     ]);
 
     // --- unplacing returns it to the wishlist, intact ------------------------
