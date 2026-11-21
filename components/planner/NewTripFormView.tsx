@@ -1,4 +1,5 @@
 import { buttonStyles } from "@/components/ui/Button";
+import { DATE_FIELD, FIELD, LABEL } from "./fieldStyles";
 
 interface Props {
   /** `useActionState`'s dispatch, handed straight to the `<form>`. */
@@ -14,16 +15,6 @@ interface Props {
   pending: boolean;
   error: string | null;
 }
-
-const FIELD =
-  "w-full rounded-xl border border-rule bg-paper px-3.5 py-2.5 text-[15px] text-ink outline-none transition-colors placeholder:text-ink-subtle/70 focus:border-tao focus:ring-2 focus:ring-tao-wash disabled:opacity-50";
-
-/* Native date inputs render their picker chrome from `color-scheme`, which
-   would otherwise inherit the dark ground the app's `body` paints. */
-const DATE_FIELD = `${FIELD} [color-scheme:light]`;
-
-const LABEL =
-  "mb-1.5 block text-[12px] font-medium uppercase tracking-[0.07em] text-ink-subtle";
 
 /**
  * Pure. Holds no state, knows nothing about the action it is given.
