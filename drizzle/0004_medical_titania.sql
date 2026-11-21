@@ -1,0 +1,2 @@
+ALTER TABLE "activities" ADD COLUMN "priority_score" integer;--> statement-breakpoint
+ALTER TABLE "activities" ADD CONSTRAINT "activities_priority_score_check" CHECK ((priority_score >= 1) AND (priority_score <= 5));

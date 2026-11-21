@@ -3,9 +3,17 @@
 /*
  * Design tokens. Every surface, hairline, and accent in the app comes from
  * here — components should never hardcode a hex value or a `white/10`.
- * The accent ramp mirrors Tailwind's purple-600/500/400/300 exactly.
+ *
+ * There are two palettes, deliberately given different names rather than
+ * swapped behind one theme switch: the roles do not map across grounds
+ * (`accent-pale` is legible text on dark and a wash on light). Which family a
+ * component uses tells you which half of the app it belongs to.
+ *
+ *   canvas / surface / line / accent-*  — dark purple. The Notion research flow.
+ *   paper / ink / rule / tao-* / ember  — light. The Day Planner and its landing.
  */
 @theme {
+  /* — dark: the research flow. Accent ramp mirrors Tailwind purple-600/500/400/300. — */
   --color-canvas: #0c0c13;
   --color-surface: #13131f;
   --color-surface-raised: #1a1a2a;
@@ -17,6 +25,25 @@
   --color-accent-bright: oklch(62.7% 0.265 303.9);   /* CTA hover, tinted glows */
   --color-accent-light: oklch(71.4% 0.203 305.504);  /* decorative marks */
   --color-accent-pale: oklch(82.7% 0.119 306.383);   /* accent text on dark */
+
+  /* — light: Travel Tao, from the Day Planner design system. — */
+  --color-paper: #ffffff;         /* page ground */
+  --color-paper-raised: #f1f6fb;  /* panels, rails, activity cards */
+
+  --color-ink: #0e0f3b;           /* body text */
+  --color-ink-muted: #2f4a74;     /* secondary */
+  --color-ink-subtle: #45618a;    /* tertiary, meta lines */
+
+  --color-rule: rgba(7, 64, 123, 0.2);
+  --color-rule-strong: rgba(7, 64, 123, 0.38);
+
+  --color-tao: #07407b;           /* accent, primary action */
+  --color-tao-bright: #0b5a9e;    /* hover */
+  --color-tao-soft: #2f7fb8;      /* decorative marks */
+  --color-tao-wash: #eaf4fb;      /* tinted fills */
+  --color-ember: #f7931e;         /* accent-2 — at most once per page */
+
+  --font-tao: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
@@ -25,4 +52,40 @@ body {
     radial-gradient(ellipse 80% 40% at 50% -10%, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
   min-height: 100vh;
   color: #e4e4f0;
+}
+
+/*
+ * The light ground replaces the dark body wash wholesale, so nothing bleeds
+ * through at the overscroll edges. Set by the outermost element of any page on
+ * the Travel Tao palette.
+ */
+body:has(.tao-ground) {
+  background-color: var(--color-paper);
+  background-image: none;
+  color: var(--color-ink);
+}
+
+/*
+ * `showModal()` puts a dialog in the top layer but leaves the page behind it
+ * scrollable. Same `:has()` trick as the ground swap above, for the same
+ * reason: the state lives on an element the body cannot otherwise see.
+ */
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+/*
+ * A design-system signature: freestanding rules fade to nothing at both ends
+ * over one 48px baseline unit, instead of stopping square. Box outlines and
+ * in-control separators stay solid — those are `border-rule`.
+ */
+.rule-fade {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-rule) 48px,
+    var(--color-rule) calc(100% - 48px),
+    transparent
+  );
 }

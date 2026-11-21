@@ -18,4 +18,5 @@ scratch/
 
 # Generated Files
 next-env.d.ts
+*.tsbuildinfo
 .gstack/

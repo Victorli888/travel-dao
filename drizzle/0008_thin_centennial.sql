@@ -1,0 +1,1 @@
+ALTER TABLE "day_itineraries" ADD COLUMN "name" text;

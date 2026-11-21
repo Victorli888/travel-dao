@@ -1,17 +1,36 @@
 # Dao 道
 
-Describe a place in one line and it lands in your Notion travel planner, researched
-and filed under the right city and category.
+A personal travel planner with two features:
 
-You type `Patisserie Rau, 169 Higashiyama, Yamashina Ward, Kyoto 607-8322, Japan`.
+- **Day Planner** (`/plan`): plan a trip day by day. Name a trip, set its dates,
+  get one column per day, and keep every activity saved for the trip in an
+  Activity Bank. Its data lives in Neon Postgres.
+- **Write to Notion** (`/write-to-notion`): describe a place in one line and it
+  lands in your Notion travel planner, researched and filed under the right
+  city and category.
+
+For Write to Notion, you type
+`Patisserie Rau, 169 Higashiyama, Yamashina Ward, Kyoto 607-8322, Japan`.
 Claude confirms what actually sits at that address, writes a summary and opening
 hours, picks a category, and creates the Notion entry at
-`Kyoto > Good Eats > Dessert > Patisserie Rau`. Notion is the source of truth —
-the app itself stores nothing but the allow-list of who may sign in.
+`Kyoto > Good Eats > Dessert > Patisserie Rau`. For this feature Notion is the
+source of truth; nothing it researches is saved to Postgres yet.
+
+`/` is a landing page that introduces the planner.
 
 ---
 
 ## Current features
+
+**Day Planner** *(in progress: see `docs/status.md`)*
+- Create a trip from a name and two dates, or reopen one you started.
+- Each trip gets one column per calendar day, generated the first time you open
+  it. A day can be given a name; without one it shows its date.
+- The Activity Bank is a read-only dialog over every activity saved for the
+  trip, with search that ignores accents.
+- Not built yet: adding an activity from the UI, placing one on a day, and
+  reordering a day. The data layer for all three exists in `lib/itinerary/`.
+  Until the UI does, the Activity Bank is empty.
 
 **Research and file a place**
 - One free-form input: place name plus full address.
@@ -56,7 +75,7 @@ the app itself stores nothing but the allow-list of who may sign in.
 | Language | TypeScript 5.9 (strict) |
 | Styling | Tailwind CSS 4.2 — no config file; tokens live in an `@theme` block in `app/globals.css` |
 | Auth | Auth.js / next-auth 5.0.0-beta.31, Google provider |
-| Database | Neon serverless Postgres (`@neondatabase/serverless` 1.1) — allow-list only |
+| Database | Neon serverless Postgres (`@neondatabase/serverless` 1.1), Drizzle ORM 0.45 + drizzle-kit 0.31 |
 | AI | `@anthropic-ai/sdk` 0.40, model `claude-haiku-4-5-20251001` |
 | Tools | `@modelcontextprotocol/sdk` 1.29 + `@notionhq/notion-mcp-server` 2.2 over stdio |
 | Validation | zod 4.4 (request body and environment) |
@@ -103,16 +122,25 @@ cp .env.example .env.local   # then fill in every value
 `lib/api/env.ts` validates the first four with zod and fails loudly, naming
 whatever is missing. The `AUTH_*` variables are read by Auth.js itself.
 
-### Create the allow-list table
+### Set up the database
 
-There are no migration files in this repo. The table is whatever satisfies the
-query in `lib/auth/allowlist.ts`, which is minimally:
+The schema lives in `lib/db/schema.ts` and migrations in `drizzle/`:
+
+```bash
+npm run db:migrate
+```
+
+Note that `drizzle/0000_*.sql` is a **descriptive no-op baseline** — its body
+is commented out, because those ten tables were hand-created against Neon
+before this repo had migrations. Against an existing database it applies
+nothing and simply records the starting point. For a **fresh** database,
+uncomment that file's body before running the command above — note that
+`0003` then drops seven of those ten again, leaving the five-table
+itinerary-planning schema.
+
+Then add yourself to the allow-list — signing in with Google is not enough:
 
 ```sql
-CREATE TABLE allowed_emails (
-  email TEXT PRIMARY KEY
-);
-
 INSERT INTO allowed_emails (email) VALUES ('you@example.com');
 ```
 
@@ -127,14 +155,26 @@ npm start           # serve the production build
 npm run lint        # ESLint
 npm test            # Vitest, once
 npm run test:watch  # Vitest, watching
+
+npm run db:generate # emit a migration from lib/db/schema.ts
+npm run db:migrate  # apply pending migrations
+npm run db:studio   # Drizzle Studio
 ```
 
-Sign in at `/login` with an allow-listed Google account, then submit a place.
-The first call takes 20–50 seconds.
+Sign in at `/login` with an allow-listed Google account. Plan a trip at `/plan`,
+or submit a place at `/write-to-notion`, where the first call takes 20–50
+seconds.
 
 ---
 
 ## How it works
+
+**Day Planner.** `/plan` and `/plan/[tripId]` are Server Components that call
+`lib/itinerary/` directly, and writes are Server Actions; the planner has no API
+routes. Every write is a single SQL statement, because the Neon HTTP driver has
+no interactive transactions. `CLAUDE.md` → *Data model* has the rules.
+
+**Write to Notion:**
 
 ```
 ChatInput → ResearchPanel → useResearch.submit
@@ -173,8 +213,7 @@ Nothing here is scheduled — this is the parking lot.
       that permits long function timeouts.
 - [ ] `UpstreamAuthError` returns 500 where 502 is more accurate.
 - [ ] `git merge` / `git rebase` are unguarded relative to the commit policy in
-      `CHANGELIST.md`.
-- [ ] `tsconfig.tsbuildinfo` is tracked in git and churns on every build.
+      `docs/working-with-claude.md`.
 
 **Ideas**
 - [ ] Read back from Notion — list or search what you have already saved, instead
@@ -188,6 +227,6 @@ Nothing here is scheduled — this is the parking lot.
 
 ## Reference
 
-- `CHANGELIST.md` — the layered-architecture refactor: what changed, why, and the
-  tradeoffs behind each decision.
+- `docs/README.md` — the project docs index: status, product, architecture,
+  development workflow, and the ground rules for working with Claude.
 - `CLAUDE.md` — architecture guidance for working in this repo.

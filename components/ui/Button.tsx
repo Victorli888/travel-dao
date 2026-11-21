@@ -12,6 +12,13 @@ const VARIANTS = {
     "bg-white hover:bg-zinc-100 text-zinc-900 font-semibold transition-colors",
   /** Text-only, no chrome. */
   quiet: "text-zinc-500 hover:text-zinc-300 transition-colors",
+  /**
+   * Travel Tao light palette. The design system outlines its primary action
+   * rather than filling it, and tints on hover — keep it that way.
+   */
+  tao: "border border-tao text-tao hover:bg-tao-wash font-medium transition-colors",
+  /** Quiet text action on the light palette. */
+  taoQuiet: "text-ink-subtle hover:text-tao font-medium transition-colors",
 } as const;
 
 const SIZES = {
