@@ -29,6 +29,7 @@ here after any break.
 | Place | Holds | Tracked in git? |
 | --- | --- | --- |
 | `CLAUDE.md` (repo root) | **The invariants**: data-model rules, the layer rule, styling tokens. Claude loads it every session. The source of truth when a doc here disagrees. | Yes |
+| `AGENTS.md` (repo root) | A pointer to `CLAUDE.md` for agents that look for that filename. Holds no rules of its own. | Yes |
 | `docs/` | Reference for both people and Claude: status, product intent, overview, process. Links to `CLAUDE.md` instead of restating rules. | Yes |
 | `README.md` | Setup and the public-facing description. | Yes |
 | `scratch/` | Private working files: wireframes PDF, DB backups, prompts, notes. | **No** |
