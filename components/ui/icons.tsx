@@ -27,6 +27,14 @@ export function CheckIcon({ size = 14, className }: IconProps) {
   );
 }
 
+export function XIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
 /** Stacked lines suggesting a document path/outline. */
 export function PathIcon({ size = 13, className }: IconProps) {
   return (

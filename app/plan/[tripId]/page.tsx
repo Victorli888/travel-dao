@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ActivityBank from "@/components/planner/ActivityBank";
 import { requireUserEmail } from "@/lib/auth/session";
-import { generateDays, getTrip, listDays } from "@/lib/itinerary";
+import { generateDays, getItinerary } from "@/lib/itinerary";
+// Deep imports, not the barrel: `@/lib/itinerary` carries `server-only`, and
+// `bank.ts` has to stay reachable from the client component below it.
+import { bankCounts, toBankEntries } from "@/lib/itinerary/bank";
 import { formatDateRange, formatDayLabel } from "@/lib/itinerary/format";
 
 interface Props {
@@ -9,8 +13,8 @@ interface Props {
 }
 
 /**
- * The trip itself — today a column per day and nothing in them. Frames 1-3
- * (the Activity Bank, dropping a place onto a day, Plan It) land here.
+ * The trip itself — a column per day, and the Activity Bank over it. Placing
+ * a saved activity onto a day, and Plan It, land here next.
  *
  * **Day generation happens on first view, not in the create action.** The
  * Neon HTTP driver has no interactive transactions, so `createTripAction`
@@ -22,15 +26,28 @@ export default async function TripPage({ params }: Props) {
   const { tripId } = await params;
   const email = await requireUserEmail();
 
-  const trip = await getTrip(email, tripId);
+  const itinerary = await getItinerary(email, tripId);
   // Missing and not-yours are the same answer — telling them apart would leak
   // which trip ids exist.
-  if (!trip) notFound();
+  if (!itinerary) notFound();
 
-  let days = await listDays(email, trip.id);
+  const { trip, activities, unscheduled } = itinerary;
+
+  let days = itinerary.days;
   if (days.length === 0 && trip.startDate && trip.endDate) {
-    days = await generateDays(email, trip.id);
+    // No days means no placements could exist, so every generated day is
+    // empty and the activity lists above are already right. Re-reading the
+    // itinerary here would buy nothing.
+    days = (await generateDays(email, trip.id)).map((day) => ({
+      ...day,
+      activities: [],
+    }));
   }
+
+  // Shaped here, on the server: `ActivityBank` receives plain strings, so
+  // nothing in `components/planner/` has to transform domain data.
+  const entries = toBankEntries(activities);
+  const counts = bankCounts(activities, unscheduled);
 
   return (
     <main className="tao-ground min-h-screen font-tao">
@@ -50,14 +67,17 @@ export default async function TripPage({ params }: Props) {
           </Link>
         </nav>
 
-        <header className="pb-8 pt-6 sm:pt-8">
-          <h1 className="m-0 text-[clamp(1.75rem,4vw,2.5rem)] font-medium leading-tight tracking-[-0.025em] text-ink">
-            {trip.name}
-          </h1>
-          <p className="mt-3 text-[15px] text-ink-muted">
-            {formatDateRange(trip.startDate, trip.endDate)} ·{" "}
-            {days.length} {days.length === 1 ? "day" : "days"}
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-6 pb-8 pt-6 sm:pt-8">
+          <div className="min-w-0">
+            <h1 className="m-0 text-[clamp(1.75rem,4vw,2.5rem)] font-medium leading-tight tracking-[-0.025em] text-ink">
+              {trip.name}
+            </h1>
+            <p className="mt-3 text-[15px] text-ink-muted">
+              {formatDateRange(trip.startDate, trip.endDate)} ·{" "}
+              {days.length} {days.length === 1 ? "day" : "days"}
+            </p>
+          </div>
+          <ActivityBank entries={entries} counts={counts} />
         </header>
 
         <div className="rule-fade" />
@@ -78,17 +98,29 @@ export default async function TripPage({ params }: Props) {
                     {formatDayLabel(day.date)}
                   </span>
                 )}
-                <span className="mt-auto text-[13px] leading-relaxed text-ink-subtle">
-                  Nothing planned yet.
-                </span>
+                {day.activities.length === 0 ? (
+                  <span className="mt-auto text-[13px] leading-relaxed text-ink-subtle">
+                    Nothing planned yet.
+                  </span>
+                ) : (
+                  <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+                    {day.activities.map((activity) => (
+                      <li
+                        key={activity.id}
+                        className="rounded-xl border border-rule bg-paper px-3 py-2 text-[13px] leading-snug text-ink"
+                      >
+                        {activity.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ol>
         </section>
 
         <p className="m-0 max-w-[54ch] pb-16 text-[15px] leading-relaxed text-ink-muted">
-          The Activity Bank and Plan It land here next. For now you can research
-          a place and{" "}
+          Plan It lands here next. For now you can research a place and{" "}
           <Link
             href="/write-to-notion"
             className="font-medium text-tao underline-offset-4 transition-colors hover:text-ember"

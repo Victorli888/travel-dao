@@ -66,6 +66,15 @@ body:has(.tao-ground) {
 }
 
 /*
+ * `showModal()` puts a dialog in the top layer but leaves the page behind it
+ * scrollable. Same `:has()` trick as the ground swap above, for the same
+ * reason: the state lives on an element the body cannot otherwise see.
+ */
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+/*
  * A design-system signature: freestanding rules fade to nothing at both ends
  * over one 48px baseline unit, instead of stopping square. Box outlines and
  * in-control separators stay solid — those are `border-rule`.
