@@ -14,7 +14,7 @@ Change the date when you do.
 | Branch | State |
 | --- | --- |
 | `main` | The Notion research app, plus auth (PR #3) and the layered-architecture refactor. |
-| `feat/itinerary-planning` | **Active, being merged.** 31 commits ahead of `main`, 0 behind, all pushed. The PR to `main` is "Planner, part 1". Merging before you can add an activity from the UI was decided on 2026-11-21; see [After merging to `main`](#after-merging-to-main). |
+| `feat/itinerary-planning` | **Active, being merged.** 33 commits ahead of `main`, 0 behind, all pushed. The PR to `main` is "Planner, part 1". Merging before you can add an activity from the UI was decided on 2026-11-21; see [After merging to `main`](#after-merging-to-main). |
 | `refactor/layered-architecture`, `feat/auth-login`, `docs/consolidate-agent-docs` | Already merged (the last via PR #4, into `feat/itinerary-planning`). Safe to delete. |
 
 `feat/brainstorm` (AI activity generation, built on tables that `0003`
