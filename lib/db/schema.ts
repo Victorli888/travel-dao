@@ -119,6 +119,13 @@ export const activities = pgTable(
     name: text("name").notNull(),
     summary: text("summary").notNull(),
     address: text("address"),
+    /**
+     * The neighbourhood a place sits in — "Pontochō", "Northern
+     * Higashiyama". The Activity Bank's second line. NULL means *not
+     * recorded*, and the bank simply omits the line; it is not a
+     * substring of `address`, and must never be derived from one.
+     */
+    area: text("area"),
     lat: numeric("lat", { precision: 9, scale: 6 }),
     lng: numeric("lng", { precision: 9, scale: 6 }),
     /** e.g. "Tue–Sun 11am–7pm". */
