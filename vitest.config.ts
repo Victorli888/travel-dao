@@ -23,5 +23,9 @@ export default defineConfig({
     // formatter that forgets `timeZone: "UTC"` renders the day before for
     // anyone west of Greenwich. Under a UTC runner that bug passes its tests.
     env: { TZ: "America/Los_Angeles" },
+    // next-auth's ESM imports `next/server` with no extension, which plain
+    // Node resolution rejects. Inlining it lets Vite resolve the import, so
+    // `lib/auth/config.test.ts` can drive a real Auth.js sign-in.
+    server: { deps: { inline: ["next-auth"] } },
   },
 });
