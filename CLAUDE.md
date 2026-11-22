@@ -53,7 +53,7 @@ Next.js 15 App Router app with two features and one route each:
 
 | Route | Feature |
 | --- | --- |
-| `/` | The Itinerary Planning landing page. Static marketing, no data access. |
+| `/` | The Itinerary Planning landing page. Static marketing, no data access. **The one public page**: `lib/auth/route-access.ts` matches it exactly — a prefix match on `/` would make every route public. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
 | `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a dialog over everything saved for the trip. Placing an activity on a day and Plan It land here next. |
 | `/plan/[tripId]/add` | Research a place and save it to this trip's activity bank. |
@@ -307,13 +307,19 @@ also how you tell, by reading it, which half of the app it belongs to.
 | Family | Tokens | Used by |
 | --- | --- | --- |
 | Dark | `canvas`, `surface`, `surface-raised`, `line`, `line-strong`, `accent` / `accent-bright` / `accent-light` / `accent-pale` | `/plan/[tripId]/add` and the auth pages |
-| Light | `paper` / `paper-raised`, `ink` / `ink-muted` / `ink-subtle`, `rule` / `rule-strong`, `tao` / `tao-bright` / `tao-soft` / `tao-wash`, `ember` | `/` and `/plan` |
+| Light | `paper` / `paper-raised`, `ink` / `ink-muted` / `ink-subtle`, `rule` / `rule-strong`, `tao` / `tao-bright` / `tao-soft` / `tao-wash`, `sky`, `ember` | `/` and `/plan` |
 
 The light family comes from the Day Planner design system. Two conventions
 in it are load-bearing rather than decorative:
 
-- **`ember` is the second accent and appears at most once per page.** Spending
-  it more widely is what makes the first accent stop reading as an accent.
+- **`ember` is the second accent, spent on one action per page.** On the
+  landing that action is "Start planning": the `ember` button variant in the
+  hero and again in the closing block, plus tiny marks (the hero's plane and
+  eyebrow dot). Nothing else gets it. Spending it more widely is what makes
+  the first accent stop reading as an accent. Ember is a fill, never text:
+  the button carries `ink` text because white on ember fails contrast.
+- **`sky` is decorative only** — washes (`bg-sky/10`), borders, illustration
+  strokes, and text on the navy block. As text on white it fails contrast.
 - **Freestanding rules fade out at both ends** over one 48px baseline unit —
   the `.rule-fade` class in `globals.css`. Box outlines and in-control
   separators stay square; those are `border-rule`.

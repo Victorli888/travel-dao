@@ -13,10 +13,37 @@ Change the date when you do.
 
 | Branch | State |
 | --- | --- |
-| `main` | Day Planner part 1 + Notion research (legacy). |
+| `main` | Day Planner part 1 + redesigned landing + Notion research (legacy). |
 | `feat/research-to-activity-bank` | **Active.** Refactors research so Claude submits a structured activity and the route inserts it into the trip's activity bank. Drops Notion MCP. |
 
 ---
+
+## Done on `main`
+
+- **Schema cut to itinerary planning only.** Migration `0003` dropped seven
+  tables, leaving five: `allowed_emails`, `trips`, `day_itineraries`,
+  `day_itinerary_activities`, `activities`. Backups are in `scratch/`.
+- **The data layer, `lib/itinerary/`.** Trips, days, activities, placements,
+  reordering, naming a day. Every write is a single SQL statement. Tests:
+  `shape`, `schemas`, `format` and `pg-errors` are pure unit tests, and
+  `crud.test.ts` is the live database suite.
+- **Landing page at `/`.** Redesigned on 2026-11-22 (`feat/landing-page-redesign`):
+  hero with a route illustration, benefits, three steps, the two tools, a
+  closing call to action. Still wholly static. **`/` is public** (exact match
+  in `lib/auth/route-access.ts`); every other route stays behind sign-in. Its
+  CTAs link to `/plan`, so a signed-out visitor is redirected to `/login`.
+- **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
+  Frame 0.
+- **`/plan/[tripId]`**: one column per day, listing the activities placed on
+  it. Days are generated on first view.
+- **The Activity Bank** (wireframe Frame 1): a dialog over every activity
+  saved for the trip, with search that ignores accents. It brought the
+  `activities.area` column (the neighbourhood), migration
+  `drizzle/0009_ambiguous_the_anarchist.sql`, `lib/itinerary/bank.ts` and
+  `components/planner/ActivityBank*.tsx`.
+- **Docs.** `CLAUDE.md` is the single agent guide (`AGENTS.md` points to it),
+  `docs/` holds only feature-work context, and `.github/pr-template.md` is
+  the PR description format (PR #4).
 
 ## Done on this branch
 
@@ -27,6 +54,7 @@ Change the date when you do.
   trip header link into it. `/write-to-notion` removed.
 - **Notion MCP removed** (`lib/mcp/`, `@notionhq/notion-mcp-server`,
   `@modelcontextprotocol/sdk`, `NOTION_*` env).
+- Landing copy no longer links to Notion; CTAs point at `/plan`.
 
 ## Next, in order
 

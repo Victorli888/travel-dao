@@ -1,22 +1,11 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-
-const PUBLIC_PATHS = ["/login", "/unauthorized"];
+import { routeAccess } from "@/lib/auth/route-access";
 
 export default auth((req) => {
-  const { nextUrl } = req;
-  const session = req.auth;
-  const isPublic = PUBLIC_PATHS.some((p) => nextUrl.pathname.startsWith(p));
-
-  if (!session && !isPublic) {
-    return NextResponse.redirect(new URL("/login", nextUrl));
-  }
-
-  if (session && !isPublic && !session.user?.isAllowed) {
-    return NextResponse.redirect(new URL("/unauthorized", nextUrl));
-  }
-
-  return NextResponse.next();
+  const access = routeAccess(req.nextUrl.pathname, req.auth);
+  if (access === "allow") return NextResponse.next();
+  return NextResponse.redirect(new URL(access, req.nextUrl));
 });
 
 export const config = {
