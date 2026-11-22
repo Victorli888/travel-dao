@@ -7,7 +7,14 @@ import {
   formatDayCount,
   formatDayLabel,
 } from "@/lib/itinerary/format";
-import { DATE_FIELD, FIELD, LABEL } from "./fieldStyles";
+import { focusRing } from "@/components/landing/styles";
+import {
+  DATE_FIELD,
+  ERROR_TEXT,
+  FIELD,
+  HINT_TEXT,
+  LABEL,
+} from "./fieldStyles";
 
 /** The one error on the form, and the field it belongs to (`null`: none). */
 export interface FieldMessage {
@@ -65,8 +72,25 @@ function listOf(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-const HINT = "m-0 mt-1.5 text-[13px] leading-snug text-ink-muted";
-const ERROR = "m-0 mt-1.5 text-[13px] leading-snug text-ember";
+/** 16px glyphs stroked in `currentColor`, after the landing's line icons. */
+function InfoGlyph() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-px h-4 w-4 shrink-0 text-tao" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M8 7.25v3.5M8 5.1v.01" />
+    </svg>
+  );
+}
+
+/** Filled, so an error reads differently from a hint without a new colour. */
+function AlertGlyph() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-px h-4 w-4 shrink-0">
+      <circle cx="8" cy="8" r="7" className="fill-ink" />
+      <path d="M8 4.5v4.25M8 11.2v.01" className="stroke-paper" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /**
  * Pure. Holds no state, knows nothing about the action it is given.
@@ -115,9 +139,9 @@ export default function NewTripFormView({
     <form
       action={action}
       noValidate
-      className="rounded-2xl border border-rule bg-paper-raised p-5 sm:p-6"
+      className="rounded-3xl border border-rule/70 bg-paper p-6 shadow-[0_24px_60px_-32px] shadow-tao/30 sm:p-9"
     >
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)] sm:gap-5">
+      <div className="grid gap-5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)] sm:gap-6">
         <div>
           <label className={LABEL} htmlFor="trip-name">
             Trip
@@ -136,7 +160,8 @@ export default function NewTripFormView({
             className={FIELD}
           />
           {errorOn("name") && (
-            <p id={messageIds.name} className={ERROR}>
+            <p id={messageIds.name} className={ERROR_TEXT}>
+              <AlertGlyph />
               {message!.text}
             </p>
           )}
@@ -145,7 +170,7 @@ export default function NewTripFormView({
         <div>
           <div className="pointer-coarse:hidden">{picker}</div>
 
-          <div className="hidden grid-cols-2 gap-3 pointer-coarse:grid">
+          <div className="hidden grid-cols-2 gap-3 pointer-coarse:grid sm:gap-4">
             <div>
               <label className={LABEL} htmlFor="trip-start">
                 Departure
@@ -183,23 +208,33 @@ export default function NewTripFormView({
           </div>
 
           {/* Each end's message sits under its own column. */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div id={messageIds.startDate}>
               {errorOn("startDate") ? (
-                <p className={ERROR}>{message!.text}</p>
+                <p className={ERROR_TEXT}>
+                  <AlertGlyph />
+                  {message!.text}
+                </p>
               ) : pastDeparture ? (
-                <p className={HINT}>
-                  That&apos;s in the past. Fine for a trip you&apos;ve taken.
+                <p className={HINT_TEXT}>
+                  <InfoGlyph />
+                  <span>That&apos;s in the past. Fine for a trip you&apos;ve taken.</span>
                 </p>
               ) : null}
             </div>
             <div id={messageIds.endDate}>
               {errorOn("endDate") ? (
-                <p className={ERROR}>{message!.text}</p>
+                <p className={ERROR_TEXT}>
+                  <AlertGlyph />
+                  {message!.text}
+                </p>
               ) : bump ? (
-                <p className={HINT}>
-                  Moved to {formatDayLabel(bump.to)} to keep{" "}
-                  {formatDayCount(bump.days)}.
+                <p className={HINT_TEXT}>
+                  <InfoGlyph />
+                  <span>
+                    Moved to {formatDayLabel(bump.to)} to keep{" "}
+                    {formatDayCount(bump.days)}.
+                  </span>
                 </p>
               ) : null}
             </div>
@@ -207,26 +242,38 @@ export default function NewTripFormView({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="m-0 text-[14px] text-ink-muted" aria-live="polite">
-          {length !== null ? (
-            <>
-              <span className="font-medium text-ink">
-                {formatDayCount(length)}
-              </span>
-              <span aria-hidden="true"> · </span>
-              <span className="sr-only">, </span>
-              {formatDateRange(startDate, endDate)}
-            </>
-          ) : (
-            "Pick both dates to see how long the trip runs."
-          )}
-        </p>
+      <div className="mt-7 flex flex-col gap-5 rounded-2xl border border-sky/30 bg-sky/10 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex items-center gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky/25 text-tao">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+              <path d="M3.5 10h17M8 3v4M16 3v4" />
+            </svg>
+          </span>
+          <p className="m-0 text-[14px] leading-snug text-ink-muted" aria-live="polite">
+            {length !== null ? (
+              <>
+                <span className="block text-[20px] font-semibold tracking-tight text-ink">
+                  {formatDayCount(length)}
+                </span>
+                <span className="sr-only">, </span>
+                {formatDateRange(startDate, endDate)}
+              </>
+            ) : (
+              <>
+                <span className="block text-[15px] font-semibold text-ink">
+                  Trip length
+                </span>
+                Pick both dates to see how long the trip runs.
+              </>
+            )}
+          </p>
+        </div>
 
         <div
           role="group"
           aria-label="Set the trip length from departure"
-          className="flex flex-wrap gap-2"
+          className="grid grid-cols-3 gap-2 sm:flex sm:justify-end"
         >
           {PRESETS.map((preset) => (
             <button
@@ -241,10 +288,11 @@ export default function NewTripFormView({
                   : "Pick a departure date first"
               }
               className={cn(
-                "cursor-pointer rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                "cursor-pointer whitespace-nowrap rounded-full border px-3 py-2 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 sm:px-4",
+                focusRing,
                 length === preset.days
-                  ? "border-tao bg-tao-wash text-tao"
-                  : "border-rule text-ink-muted enabled:hover:border-tao enabled:hover:text-tao",
+                  ? "border-tao bg-tao text-paper"
+                  : "border-rule/70 bg-paper text-tao enabled:hover:border-sky enabled:hover:bg-sky/15",
               )}
             >
               {preset.label}
@@ -254,9 +302,12 @@ export default function NewTripFormView({
       </div>
 
       {longTrip && length !== null && (
-        <p className={HINT}>
-          {formatDayCount(length)} is a long trip, so that&apos;s{" "}
-          {length} columns to fill. Worth a second look at Return.
+        <p className={cn(HINT_TEXT, "mt-4")}>
+          <InfoGlyph />
+          <span>
+            {formatDayCount(length)} is a long trip, so that&apos;s {length}{" "}
+            columns to fill. Worth a second look at Return.
+          </span>
         </p>
       )}
 
@@ -266,7 +317,8 @@ export default function NewTripFormView({
       <div role="status" aria-live="polite">
         {message &&
           (message.field === null ? (
-            <p className="m-0 mt-4 text-[13px] leading-relaxed text-ember">
+            <p className={cn(ERROR_TEXT, "mt-5")}>
+              <AlertGlyph />
               {message.text}
             </p>
           ) : (
@@ -274,9 +326,9 @@ export default function NewTripFormView({
           ))}
       </div>
 
-      <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <div className="mt-7 flex flex-col-reverse gap-3 border-t border-rule/70 pt-6 sm:flex-row sm:items-center sm:justify-end sm:gap-5">
         {hint && (
-          <p id="create-trip-hint" className="m-0 text-[13px] text-ink-subtle">
+          <p id="create-trip-hint" className="m-0 text-[13px] leading-snug text-ink-subtle">
             {hint}
           </p>
         )}
@@ -284,10 +336,12 @@ export default function NewTripFormView({
           type="submit"
           disabled={!canSubmit || pending}
           aria-describedby={hint ? "create-trip-hint" : undefined}
+          /* The page's one action, so it takes the landing's one action
+             colour: the ember fill with ink text. */
           className={buttonStyles({
-            variant: "tao",
+            variant: "ember",
             size: "md",
-            className: "w-full sm:w-auto",
+            className: "w-full px-7 sm:w-auto",
           })}
         >
           {pending ? "Creating…" : "Create trip"}

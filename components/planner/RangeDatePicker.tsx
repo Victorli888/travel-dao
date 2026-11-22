@@ -138,7 +138,10 @@ export default function RangeDatePicker({
     const width = popover.offsetWidth;
     const maxLeft = window.innerWidth - width - EDGE;
     popover.style.top = `${rect.bottom + window.scrollY + GAP}px`;
-    popover.style.left = `${Math.max(EDGE, Math.min(rect.left, maxLeft)) + window.scrollX}px`;
+    // Wider than the fields (two months): align right edges so it stays
+    // inside the form card rather than overhanging it.
+    const preferred = width > rect.width ? rect.right - width : rect.left;
+    popover.style.left = `${Math.max(EDGE, Math.min(preferred, maxLeft)) + window.scrollX}px`;
 
     popover
       .querySelector<HTMLButtonElement>('[tabindex="0"][data-date]')

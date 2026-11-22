@@ -40,11 +40,19 @@ function Trigger({
         className={cn(
           FIELD,
           "flex cursor-pointer items-center justify-between gap-2 text-left",
-          !value && "text-ink-subtle/70",
+          !value && "text-ink-subtle",
         )}
       >
         <span className="truncate">
-          {value ? `${formatDayLabel(value)} ${value.slice(0, 4)}` : "Add date"}
+          {value ? (
+            <>
+              {formatDayLabel(value)}
+              {/* The year only where it fits; the summary below carries it. */}
+              <span className="hidden sm:inline"> {value.slice(0, 4)}</span>
+            </>
+          ) : (
+            "Add date"
+          )}
         </span>
         <CalendarGlyph />
       </button>
@@ -57,7 +65,7 @@ function CalendarGlyph() {
     <svg
       aria-hidden="true"
       viewBox="0 0 16 16"
-      className="h-4 w-4 shrink-0 text-ink-subtle"
+      className="h-[18px] w-[18px] shrink-0 text-tao"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.4"
@@ -109,7 +117,7 @@ export default function RangeDatePickerView({
 }: Props) {
   return (
     <>
-      <div ref={anchorRef} className="grid grid-cols-2 gap-3 sm:gap-5">
+      <div ref={anchorRef} className="grid grid-cols-2 gap-3 sm:gap-4">
         <Trigger
           id="trip-start-trigger"
           label="Departure"
@@ -135,7 +143,8 @@ export default function RangeDatePickerView({
         role="dialog"
         aria-label="Choose trip dates"
         onToggle={onToggle}
-        className="absolute inset-auto m-0 rounded-2xl border border-rule bg-paper p-0 font-tao text-ink shadow-[0_12px_40px_-12px_rgba(7,64,123,0.35)]"
+        /* The landing's floating-card shadow (the hero's day card). */
+        className="absolute inset-auto m-0 rounded-3xl border border-rule/70 bg-paper p-0 font-tao text-ink shadow-[0_18px_40px_-20px] shadow-tao/35"
       >
         {children}
       </div>
