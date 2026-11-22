@@ -1,59 +1,71 @@
+import { cn } from "@/lib/cn";
+import { container, eyebrow, sectionHeading } from "@/components/landing/styles";
+
 const STEPS = [
   {
-    action: "Find",
-    title: "Find activities you enjoy",
-    body: "Search by name, or pull in what you already saved. A place needs its name and its neighbourhood; everything else fills itself in.",
+    title: "Name your trip",
+    body: "Give it a name, then set your departure and return dates.",
   },
   {
-    action: "Create",
-    title: "Create a trip",
-    body: "Name it and set the dates. Travel Tao lays out a column for every day between them, waiting to be filled.",
+    title: "Open your days",
+    body: "Every date between them gets its own column, waiting to be filled.",
   },
   {
-    action: "Add",
-    title: "Add the activities",
-    body: "Sets pins on a map tell you in a second whether the day doubles back across the city. Drop what does not belong before you spend a morning on it.",
-  },
-  {
-    action: "Plan",
-    title: "Let Travel Tao work out the best plan for you.",
-    body: "Opening hours, meal times, a booking you cannot move, and how long it takes to get between them. Adjust any stop and the rest shift with it.",
+    title: "Gather what to see",
+    body: "Keep the places you want in the trip's Activity Bank, then shape each day around them.",
   },
 ];
 
 /**
- * The four steps sit on the spine the planner's own timeline uses, with the
- * verb where a start time would be — the order matters, so the structure says
- * so without numbering it.
+ * Three numbered stops on one dotted route: across on wide screens, down on
+ * narrow ones. The order matters, so it is an `<ol>`.
  */
 export default function HowItWorks() {
   return (
-    <section className="py-14 sm:py-20">
-      <h2 className="m-0 mb-9 max-w-[24ch] text-[clamp(1.5rem,3.4vw,2rem)] font-medium leading-tight tracking-[-0.02em] text-ink">
-        Four moves from a list of places to a day you can follow.
-      </h2>
+    <section
+      aria-labelledby="how-heading"
+      className="border-y border-sky/30 bg-sky/10 py-20 sm:py-24"
+    >
+      <div className={container}>
+        <div className="max-w-[40rem]">
+          <p className={eyebrow}>How it works</p>
+          <h2 id="how-heading" className={sectionHeading}>
+            From two dates to a trip you can follow.
+          </h2>
+        </div>
 
-      <ol className="m-0 list-none p-0">
-        {STEPS.map((step) => (
-          <li
-            key={step.action}
-            className="group grid grid-cols-[52px_minmax(0,1fr)] gap-x-4 sm:grid-cols-[62px_minmax(0,1fr)] sm:gap-x-5"
-          >
-            <span className="pt-[3px] text-right text-[13px] font-medium text-tao">
-              {step.action}
-            </span>
-            <div className="relative border-l border-rule pb-7 pl-5 group-last:border-transparent group-last:pb-0 sm:pl-6">
-              <span className="absolute -left-[4px] top-[9px] h-2 w-2 rounded-full bg-tao" />
-              <h3 className="m-0 text-[17px] font-medium leading-snug tracking-tight text-ink">
-                {step.title}
-              </h3>
-              <p className="m-0 mt-1.5 max-w-[58ch] text-[15px] leading-relaxed text-ink-muted">
-                {step.body}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
+        <ol className="m-0 mt-14 grid list-none gap-0 p-0 md:grid-cols-3 md:gap-8">
+          {STEPS.map((step, i) => (
+            <li
+              key={step.title}
+              className="relative grid grid-cols-[3rem_minmax(0,1fr)] gap-x-5 pb-10 last:pb-0 md:block md:pb-0"
+            >
+              {/* The dotted leg to the next stop. */}
+              {i < STEPS.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute border-dashed border-tao/35",
+                    "left-6 top-12 bottom-0 border-l-2",
+                    "md:left-16 md:right-[-2rem] md:top-6 md:bottom-auto md:border-l-0 md:border-t-2",
+                  )}
+                />
+              )}
+              <span className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 border-tao bg-paper text-[17px] font-semibold text-tao">
+                {i + 1}
+              </span>
+              <div className="pt-2 md:pt-6">
+                <h3 className="m-0 text-[19px] font-semibold tracking-tight text-ink">
+                  {step.title}
+                </h3>
+                <p className="m-0 mt-2 max-w-[34ch] text-[15px] leading-relaxed text-ink-muted">
+                  {step.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   );
 }
