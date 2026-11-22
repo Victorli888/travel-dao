@@ -34,7 +34,9 @@ dropped) no longer exists locally or on `origin`.
 - **Landing page at `/`.** The Notion tool moved to `/write-to-notion`.
   Redesigned on 2026-11-22 (`feat/landing-page-redesign`): hero with a route
   illustration, benefits, three steps, the two tools, a closing call to
-  action. Still wholly static, and still behind sign-in like every route.
+  action. Still wholly static. **`/` is public** (exact match in
+  `lib/auth/route-access.ts`); every other route stays behind sign-in. Its
+  CTAs link to `/plan`, so a signed-out visitor is redirected to `/login`.
 - **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
   Frame 0.
 - **`/plan/[tripId]`**: one column per day, listing the activities placed on

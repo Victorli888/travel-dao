@@ -54,7 +54,7 @@ Next.js 15 App Router app with two features and one route each:
 
 | Route | Feature |
 | --- | --- |
-| `/` | The Itinerary Planning landing page. Static marketing, no data access. |
+| `/` | The Itinerary Planning landing page. Static marketing, no data access. **The one public page**: `lib/auth/route-access.ts` matches it exactly — a prefix match on `/` would make every route public. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
 | `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
 | `/write-to-notion` | One input, one API route, one agentic Claude run that writes to Notion. |

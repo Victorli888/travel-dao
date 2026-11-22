@@ -38,7 +38,7 @@ export default function LandingHero() {
           </Link>
         </div>
         <p className="m-0 mt-8 text-[13px] text-ink-subtle">
-          Private by invitation. Sign in with Google.
+          Private by invitation.
         </p>
       </div>
 
