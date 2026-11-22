@@ -17,6 +17,12 @@ const VARIANTS = {
    * rather than filling it, and tints on hover — keep it that way.
    */
   tao: "border border-tao text-tao hover:bg-tao-wash font-medium transition-colors",
+  /**
+   * The one sunset-orange action on a light page: the landing's primary call
+   * to action. Ink text, not white — white on ember fails contrast.
+   */
+  ember:
+    "bg-ember text-ink hover:bg-ember/85 font-semibold shadow-sm shadow-ember/20 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tao",
   /** Quiet text action on the light palette. */
   taoQuiet: "text-ink-subtle hover:text-tao font-medium transition-colors",
 } as const;

@@ -41,7 +41,23 @@
   --color-tao-bright: #0b5a9e;    /* hover */
   --color-tao-soft: #2f7fb8;      /* decorative marks */
   --color-tao-wash: #eaf4fb;      /* tinted fills */
-  --color-ember: #f7931e;         /* accent-2 — at most once per page */
+  --color-ember: #f7931e;         /* accent-2 — the primary CTA and tiny marks only */
+  --color-sky: #7fcdee;           /* soft accents, washes — decorative, never text on white */
+
+  /*
+   * Landing motion. Applied only behind `motion-safe:`, so a reader who asks
+   * for reduced motion gets the still illustration.
+   */
+  --animate-route: route-dash 2.4s linear infinite;
+  --animate-drift: drift 6s ease-in-out infinite;
+
+  @keyframes route-dash {
+    to { stroke-dashoffset: -24; }
+  }
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(6px, -6px); }
+  }
 
   --font-tao: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
