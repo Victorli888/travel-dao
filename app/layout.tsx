@@ -16,7 +16,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Dao",
-  description: "Plan your days, and save the places you find to Notion",
+  description: "Plan your days, and save the places you find to your activity bank",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

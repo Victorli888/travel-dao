@@ -46,7 +46,7 @@ export default function ChatInputView({
             Enter to submit · Shift+Enter for new line
           </p>
           <Button size="sm" onClick={onSubmit} disabled={disabled || !value.trim()}>
-            Save to Notion
+            Add to bank
             <ArrowRightIcon />
           </Button>
         </div>

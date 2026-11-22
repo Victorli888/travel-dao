@@ -10,14 +10,14 @@ export interface ProgressStep {
 }
 
 /**
- * Mirrors the phases in the system prompt: research, then categorize, then
- * write to Notion.
+ * Mirrors the phases in the system prompt: research, then submit to the
+ * activity bank.
  */
 export const RESEARCH_STEPS: ProgressStep[] = [
   { label: "Identifying the place", ms: 6000 },
   { label: "Researching details & hours", ms: 9000 },
-  { label: "Choosing a category", ms: 6000 },
-  { label: "Saving to your Notion planner", ms: null },
+  { label: "Preparing the activity", ms: 5000 },
+  { label: "Saving to your activity bank", ms: null },
 ];
 
 interface Props {
@@ -47,8 +47,8 @@ export default function ResearchProgress({ steps = RESEARCH_STEPS }: Props) {
           {steps[step].label}&hellip;
         </h2>
         <p className="text-sm text-zinc-500 text-center max-w-xs leading-relaxed">
-          I&apos;m researching this and saving it to Notion. This usually takes
-          20–50 seconds.
+          I&apos;m researching this and saving it to your activity bank. This
+          usually takes 15–40 seconds.
         </p>
 
         <div className="flex gap-2 mt-8">
@@ -59,8 +59,8 @@ export default function ResearchProgress({ steps = RESEARCH_STEPS }: Props) {
                 i < step
                   ? "w-6 bg-accent-bright"
                   : i === step
-                  ? "w-8 bg-accent-light opacity-80"
-                  : "w-6 bg-line"
+                    ? "w-8 bg-accent-light opacity-80"
+                    : "w-6 bg-line"
               }`}
             />
           ))}

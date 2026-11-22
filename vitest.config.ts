@@ -14,6 +14,11 @@ export default defineConfig({
       "server-only": fileURLToPath(
         new URL("./node_modules/server-only/empty.js", import.meta.url),
       ),
+      // next-auth imports `next/server` without the `.js` extension; Node's
+      // ESM resolver won't find it unless we point at the file explicitly.
+      "next/server": fileURLToPath(
+        new URL("./node_modules/next/server.js", import.meta.url),
+      ),
     },
   },
   test: {

@@ -16,12 +16,6 @@ export default function LandingFooter() {
           >
             Start planning
           </Link>
-          <Link
-            href="/write-to-notion"
-            className={buttonStyles({ variant: "taoQuiet", size: "bare" })}
-          >
-            Write to Notion
-          </Link>
         </div>
       </div>
     </footer>

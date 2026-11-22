@@ -6,19 +6,30 @@ import ChatInput from "@/components/research/ChatInput";
 import ResearchProgress from "@/components/research/ResearchProgress";
 import SuccessCardView from "@/components/research/SuccessCardView";
 import { useResearch } from "@/hooks/useResearch";
-import { parseNotionPath } from "@/lib/research/parse-reply";
+
+interface Props {
+  tripId: string;
+  /** Shown under the wordmark so the user knows which trip this saves into. */
+  tripName: string;
+}
 
 /**
- * The app's only stateful orchestrator: owns the request lifecycle, decides
- * which view is on screen, and does the one bit of data shaping the success
- * view needs. Every component below this one is presentational.
+ * The app's only stateful research orchestrator: owns the request lifecycle,
+ * decides which view is on screen, and passes the saved activity to the
+ * success view. Every component below this one is presentational.
  */
-export default function ResearchPanel() {
-  const { state, submit, reset } = useResearch();
+export default function ResearchPanel({ tripId, tripName }: Props) {
+  const { state, submit, reset } = useResearch(tripId);
 
   if (state.status === "success") {
-    const { path, body } = parseNotionPath(state.message);
-    return <SuccessCardView path={path} body={body} onAddAnother={reset} />;
+    return (
+      <SuccessCardView
+        activity={state.activity}
+        body={state.message}
+        tripId={tripId}
+        onAddAnother={reset}
+      />
+    );
   }
 
   return (
@@ -30,7 +41,9 @@ export default function ResearchPanel() {
             <>
               Describe any place you want to visit.
               <br />
-              I&apos;ll research it and organize it in Notion.
+              I&apos;ll research it and add it to{" "}
+              <span className="text-zinc-300">{tripName}</span>&apos;s activity
+              bank.
             </>
           }
         />

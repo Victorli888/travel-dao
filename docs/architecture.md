@@ -8,7 +8,7 @@
 
 Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind v4 (tokens in
 `app/globals.css`) · Auth.js v5 (Google) · Neon Postgres over the HTTP driver
-· Drizzle ORM + drizzle-kit · zod · Vitest · Anthropic SDK + Notion MCP.
+· Drizzle ORM + drizzle-kit · zod · Vitest · Anthropic SDK.
 
 ## Routes
 
@@ -17,14 +17,14 @@ Next.js 15 (App Router) · React 19 · TypeScript strict · Tailwind v4 (tokens 
 | `/` | Server Component, no JS | Landing page (`components/landing/`) |
 | `/plan` | Server Component + Server Action | Trip list and new-trip form. Action: `app/plan/actions.ts` → `createTripAction` |
 | `/plan/[tripId]` | Server Component | One trip: day columns plus the Activity Bank |
-| `/write-to-notion` | Client orchestrator | `ResearchPanel` → `POST /api/research` |
-| `/api/research` | Route Handler | The only API route besides auth. It runs the agent. |
+| `/plan/[tripId]/add` | Client orchestrator | `ResearchPanel` → `POST /api/research` |
+| `/api/research` | Route Handler | The only API route besides auth. Runs the agent and inserts into `activities`. |
 | `/login`, `/unauthorized`, `/api/auth/*` | Auth | The only paths `middleware.ts` leaves open |
 
 ## How a request flows
 
 ```
-Day Planner (no API routes, on purpose)
+Day Planner (mutations via Server Actions)
 
   page.tsx (Server Component) ──read──▶ lib/itinerary/* ──▶ Neon
         │  requireUserEmail()            (server-only, userEmail on every call)
@@ -37,13 +37,12 @@ Day Planner (no API routes, on purpose)
   app/plan/actions.ts (Server Action) ──write──▶ lib/itinerary/* ──▶ Neon
         └── redirect / revalidate
 
-Write to Notion
+Research → activity bank
 
-  ChatInput → ResearchPanel → useResearch → POST /api/research
-     → parseResearchRequest (zod) → runResearchAgent
-        ├─ spawn local Notion MCP subprocess (stdio)
-        └─ runAgentLoop: Claude ⇄ tools, ≤ MAX_ITERATIONS
-     → parseNotionPath → SuccessCardView
+  ChatInput → ResearchPanel → useResearch({ tripId }) → POST /api/research
+     → parseResearchRequest (zod) → requireUserEmail
+     → runResearchAgent (Claude ⇄ submit_activity tool)
+     → addActivity → SuccessCardView
 ```
 
 Detail: `CLAUDE.md` → *Request flow*, *The agent loop*.
@@ -107,6 +106,6 @@ Each has a reason that isn't obvious from the code. The detail is in
 6. **Dates are bare `YYYY-MM-DD`, formatted in UTC** via
    `lib/itinerary/format.ts`. Tests run in `America/Los_Angeles` to catch
    a missing `timeZone`.
-7. **Two palettes, never mixed**: dark for Notion/auth, light (`tao`, `ink`,
+7. **Two palettes, never mixed**: dark for research/auth, light (`tao`, `ink`,
    `paper`, …) for `/` and `/plan`. `ember` at most once per page.
    `CLAUDE.md` → *Styling*.

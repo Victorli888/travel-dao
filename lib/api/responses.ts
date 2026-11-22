@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { AppError } from "./errors";
-import type { ResearchResponse } from "@/lib/types";
+import type { ResearchActivity, ResearchResponse } from "@/lib/types";
 
 /** Success envelope. */
-export function ok(message: string) {
-  return NextResponse.json<ResearchResponse>({ success: true, message });
+export function ok(message: string, activity: ResearchActivity) {
+  return NextResponse.json<ResearchResponse>({
+    success: true,
+    message,
+    activity,
+  });
 }
 
 /**
@@ -15,7 +19,7 @@ export function fail(error: unknown) {
   if (error instanceof AppError) {
     return NextResponse.json<ResearchResponse>(
       { success: false, error: error.message },
-      { status: error.status }
+      { status: error.status },
     );
   }
 
@@ -25,6 +29,6 @@ export function fail(error: unknown) {
 
   return NextResponse.json<ResearchResponse>(
     { success: false, error: message },
-    { status: 500 }
+    { status: 500 },
   );
 }

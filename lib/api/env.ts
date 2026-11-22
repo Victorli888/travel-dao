@@ -3,8 +3,6 @@ import { ConfigError } from "./errors";
 
 const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
-  NOTION_API_KEY: z.string().min(1),
-  NOTION_PAGE_NAME: z.string().min(1).default("Travel Planner"),
   DATABASE_URL: z.string().min(1),
 });
 

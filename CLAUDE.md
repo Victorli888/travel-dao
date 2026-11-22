@@ -40,13 +40,12 @@ npm run db:studio   # Drizzle Studio
 
 Copy `.env.example` to `.env.local` and populate every variable.
 
-`lib/api/env.ts` parses and caches the four variables the app's own code
-reads (`ANTHROPIC_API_KEY`, `NOTION_API_KEY`, `NOTION_PAGE_NAME`,
-`DATABASE_URL`) and throws a `ConfigError` naming whatever is missing.
-Parsing is lazy on purpose — throwing at module load would take down
-middleware and every route rather than the one call that needs the key.
-The `AUTH_*` variables are read by Auth.js directly and are not in that
-schema.
+`lib/api/env.ts` parses and caches the two variables the app's own code
+reads (`ANTHROPIC_API_KEY`, `DATABASE_URL`) and throws a `ConfigError`
+naming whatever is missing. Parsing is lazy on purpose — throwing at
+module load would take down middleware and every route rather than the
+one call that needs the key. The `AUTH_*` variables are read by Auth.js
+directly and are not in that schema.
 
 ## Architecture
 
@@ -56,18 +55,19 @@ Next.js 15 App Router app with two features and one route each:
 | --- | --- |
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
-| `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
-| `/write-to-notion` | One input, one API route, one agentic Claude run that writes to Notion. |
+| `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a dialog over everything saved for the trip. Placing an activity on a day and Plan It land here next. |
+| `/plan/[tripId]/add` | Research a place and save it to this trip's activity bank. |
 
-The Notion flow is described below and is unchanged. The planner has a full
-data layer (`lib/itinerary/`) and the first screen on top of it.
+The research flow is described below. The planner has a full data layer
+(`lib/itinerary/`) and the first screens on top of it.
 
-**The planner has no API routes and should not grow any.** `/plan` and
-`/plan/[tripId]` are Server Components that call `lib/itinerary/` directly,
-and the one mutation is the Server Action in `app/plan/actions.ts`. See the
-note in `lib/itinerary/index.ts`. The `ok()`/`fail()` envelope in
-`lib/api/responses.ts` belongs to the Notion flow — it is typed to
-`ResearchResponse` and does not generalise.
+**Planner mutations stay Server Actions; research is the one exception.**
+`/plan` and `/plan/[tripId]` are Server Components that call
+`lib/itinerary/` directly, and trip creation is the Server Action in
+`app/plan/actions.ts`. Research keeps `POST /api/research` because the
+agent loop needs a long-running Route Handler (`maxDuration` 120). The
+`ok()`/`fail()` envelope in `lib/api/responses.ts` belongs to that flow —
+it is typed to `ResearchResponse` and does not generalise.
 
 **Creating a trip and generating its days are two requests, on purpose.**
 `createTripAction` performs exactly one write and redirects;
@@ -216,18 +216,17 @@ or in the orchestrator.
 
 | Directory                      | Contains                                                                                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/`                         | Routes only. Thin — `app/page.tsx` is a server component that renders `PageShell` + `ResearchPanel`.                                                    |
-| `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs.                |
+| `app/`                         | Routes only. Thin — `/plan/[tripId]/add` renders `PageShell` + `ResearchPanel`.                                                                        |
+| `components/ResearchPanel.tsx` | The **only** stateful research orchestrator. Owns the request lifecycle and picks the view.                                                             |
 | `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`.                            |
 | `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
 | `components/planner/`          | Presentational views for `/plan`. Same rule as `components/research/`, and **two** containers hold to it: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle) and `ActivityBank` (a draft search string and two refs). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
-| `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
+| `lib/research/`                | Server-side domain: `prompt`, `agent`, `submit-tool`, `schema`.                                                                                         |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
 | `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
 | `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). |
-| `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
 | `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
 | `sql/`                         | Raw-SQL validation against the schema. `validate-itinerary.sql` builds a fake trip, asserts the Data model invariants above, and ROLLBACKs — it writes nothing and is never imported by app code. |
@@ -252,38 +251,28 @@ since a backdrop click targets the `<dialog>` element itself.
 
 ### Request flow
 
-1. `ChatInput` → `ResearchPanel` → `useResearch.submit`
-2. `postResearch` (`lib/api/research-client.ts`) POSTs to `/api/research`
-3. The route validates the body with `parseResearchRequest` and calls
-  `runResearchAgent`
-4. `runResearchAgent` spawns the Notion MCP subprocess, builds the system
-  prompt, and hands both to `runAgentLoop`
+1. `ChatInput` → `ResearchPanel` → `useResearch.submit` (trip-scoped)
+2. `postResearch` (`lib/api/research-client.ts`) POSTs `{ message, tripId }` to
+  `/api/research`
+3. The route validates the body, calls `requireUserEmail`, runs
+  `runResearchAgent`, then `addActivity`
+4. `runResearchAgent` builds the system prompt and hands Claude a host tool,
+  `submit_activity`, whose input matches the activity draft shape
 5. `runAgentLoop` prompts Claude, executes any tool calls, and repeats until
-  the model stops (bounded by `MAX_ITERATIONS`); the MCP subprocess is torn
-   down in a `finally`
-6. `ResearchPanel` runs `parseNotionPath` over the reply and renders
-  `SuccessCardView`
-
-
+  the model stops (bounded by `MAX_ITERATIONS`)
+6. `ResearchPanel` renders `SuccessCardView` with the saved activity
 
 ### The agent loop
 
 `runAgentLoop` takes an `AgentDeps` object (`listTools`, `createMessage`,
 `callTool`) rather than reaching for clients itself, so the control flow is
 tested with plain fakes in `lib/research/agent.test.ts`. `runResearchAgent`
-is the thin wiring that supplies the real Anthropic client and MCP
-subprocess.
-
-Notion MCP runs as a **local stdio subprocess** (`@notionhq/notion-mcp-server`,
-resolved from `node_modules/.bin`), not the remote `mcp.notion.com` server —
-the local one accepts internal integration tokens (`ntn_...`) via
-`OPENAPI_MCP_HEADERS`, where the remote one requires OAuth. Tool calls are
-executed by our own loop, not server-side by the Anthropic API.
+is the thin wiring that supplies the real Anthropic client and the
+`submit_activity` host tool.
 
 Tool failures come back as `is_error` tool results rather than throwing, so
-the model can see them and adjust. Credential rejections are classified into
-`UpstreamAuthError` at the MCP boundary — never by matching substrings
-against an error message further up the stack.
+the model can see them and adjust. The route inserts the captured draft via
+`addActivity` only after the loop returns a validated submission.
 
 ### Errors
 
@@ -317,15 +306,14 @@ also how you tell, by reading it, which half of the app it belongs to.
 
 | Family | Tokens | Used by |
 | --- | --- | --- |
-| Dark | `canvas`, `surface`, `surface-raised`, `line`, `line-strong`, `accent` / `accent-bright` / `accent-light` / `accent-pale` | `/write-to-notion` and the auth pages |
+| Dark | `canvas`, `surface`, `surface-raised`, `line`, `line-strong`, `accent` / `accent-bright` / `accent-light` / `accent-pale` | `/plan/[tripId]/add` and the auth pages |
 | Light | `paper` / `paper-raised`, `ink` / `ink-muted` / `ink-subtle`, `rule` / `rule-strong`, `tao` / `tao-bright` / `tao-soft` / `tao-wash`, `ember` | `/` and `/plan` |
 
 The light family comes from the Day Planner design system. Two conventions
 in it are load-bearing rather than decorative:
 
-- **`ember` is the second accent and appears at most once per page.** On the
-  landing that is the hover on the one link out to the Notion flow. Spending it
-  more widely is what makes the first accent stop reading as an accent.
+- **`ember` is the second accent and appears at most once per page.** Spending
+  it more widely is what makes the first accent stop reading as an accent.
 - **Freestanding rules fade out at both ends** over one 48px baseline unit —
   the `.rule-fade` class in `globals.css`. Box outlines and in-control
   separators stay square; those are `border-rule`.

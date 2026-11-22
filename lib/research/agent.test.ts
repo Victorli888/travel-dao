@@ -54,9 +54,9 @@ function deps(turns: Anthropic.Message[], overrides: Partial<AgentDeps> = {}) {
 
 describe("runAgentLoop", () => {
   it("returns the model's text when it ends its turn", async () => {
-    const d = deps([text("  Saved to Notion.  ")]);
+    const d = deps([text("  Saved to the activity bank.  ")]);
     await expect(runAgentLoop("sys", "Tokyo Tower", d)).resolves.toBe(
-      "Saved to Notion."
+      "Saved to the activity bank."
     );
     expect(d.turnCount()).toBe(1);
     expect(d.callTool).not.toHaveBeenCalled();
@@ -81,7 +81,7 @@ describe("runAgentLoop", () => {
   it("reports a thrown tool as an error result instead of crashing the run", async () => {
     const d = deps([toolUse("create-page"), text("Recovered.")], {
       callTool: vi.fn(async () => {
-        throw new Error("Notion said no");
+        throw new Error("Submit rejected");
       }),
     });
 
@@ -94,7 +94,7 @@ describe("runAgentLoop", () => {
         {
           type: "tool_result",
           tool_use_id: "tool_1",
-          content: "Notion said no",
+          content: "Submit rejected",
           is_error: true,
         },
       ],

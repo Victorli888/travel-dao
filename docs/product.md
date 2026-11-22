@@ -5,16 +5,14 @@
 
 ## What it is
 
-A personal travel planner with two features, for allow-listed users only
-(Google sign-in plus the `allowed_emails` table).
+A personal travel planner for allow-listed users only (Google sign-in plus the
+`allowed_emails` table).
 
-1. **Write to Notion** (`/write-to-notion`). Type a place and its full
+1. **The Day Planner** (`/plan`). Plan a trip day by day. Save activities to
+   a trip, place them on days, order them. Its data lives in Postgres (Neon).
+2. **Research a place** (`/plan/[tripId]/add`). Type a place and its full
    address. A Claude agent confirms what's actually at that address,
-   summarises it, picks a category, and files it into your Notion travel
-   planner over MCP. This is the original app, and it's complete.
-2. **The Day Planner** (`/plan`). Plan a trip day by day. Save activities to
-   a trip, place them on days, order them. This is the feature being built
-   now. Its data lives in Postgres (Neon), not Notion.
+   summarises it, and saves it into that trip's activity bank.
 
 The landing page at `/` introduces the planner.
 
@@ -26,7 +24,7 @@ frames. "Frame N" is page N+1.
 | Frame | Screen | Where it lives | Status |
 | --- | --- | --- | --- |
 | 0 | Trip header: trip name, Departure and Return dates | `/plan` | Built |
-| 1 | Activity Bank: type chips filtering a grid of activities, plus "Add Activity (+)" | Dialog on `/plan/[tripId]` | Read-only + search built. No type chips, since there are no categories in the schema. |
+| 1 | Activity Bank: type chips filtering a grid of activities, plus "Add Activity (+)" | Dialog on `/plan/[tripId]`; add via `/plan/[tripId]/add` | Search + research-to-bank built. No type chips yet. |
 | 2 | Itinerary Day: a day's content and a "Plan It" button | `/plan/[tripId]` | Day columns built. Plan It not started. |
 | 3 | Activity Modal: an activity's content and a "Save It" button | Not built | Not started |
 
@@ -60,3 +58,5 @@ convention. The enforcement details are in `CLAUDE.md` → Data model.
 - **Nothing records rejection** and **there's no prompt history**, by the
   scoping in migration `0003`. Adding either back is a product decision. Read
   `0003`'s header first.
+- **The activity bank is the source of truth for researched places.** The
+  research agent submits a structured draft; Notion is not in the loop.

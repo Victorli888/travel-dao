@@ -1,16 +1,23 @@
+import Link from "next/link";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
-import { CheckIcon, PathIcon } from "@/components/ui/icons";
+import Button, { buttonStyles } from "@/components/ui/Button";
+import { CheckIcon } from "@/components/ui/icons";
+import type { ResearchActivity } from "@/lib/types";
 
 interface Props {
-  /** Notion breadcrumb, already parsed. Hidden when null. */
-  path: string | null;
+  activity: ResearchActivity;
   body: string;
+  tripId: string;
   onAddAnother: () => void;
 }
 
-/** Pure success view. Receives parsed values — it does no parsing itself. */
-export default function SuccessCardView({ path, body, onAddAnother }: Props) {
+/** Pure success view. Receives the saved activity — it does no parsing itself. */
+export default function SuccessCardView({
+  activity,
+  body,
+  tripId,
+  onAddAnother,
+}: Props) {
   return (
     <div className="space-y-3">
       <Card accentBar>
@@ -19,25 +26,38 @@ export default function SuccessCardView({ path, body, onAddAnother }: Props) {
             <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
               <CheckIcon className="text-emerald-400" />
             </div>
-            <p className="text-sm font-semibold text-white">Saved to Notion</p>
+            <p className="text-sm font-semibold text-white">
+              Saved to activity bank
+            </p>
           </div>
 
-          {path && (
-            <div className="flex items-center gap-2 bg-accent-bright/8 border border-accent-bright/15 rounded-xl px-4 py-3 mb-5">
-              <PathIcon className="text-accent-light flex-shrink-0" />
-              <p className="text-xs text-accent-pale font-mono leading-relaxed">
-                {path}
-              </p>
-            </div>
-          )}
+          <div className="rounded-xl border border-accent-bright/15 bg-accent-bright/8 px-4 py-3 mb-5">
+            <p className="text-sm font-medium text-accent-pale leading-snug">
+              {activity.name}
+            </p>
+            {activity.area && (
+              <p className="mt-1 text-xs text-zinc-400">{activity.area}</p>
+            )}
+            <p className="mt-2 text-xs text-zinc-400 leading-relaxed line-clamp-3">
+              {activity.summary}
+            </p>
+          </div>
 
           <p className="text-sm text-zinc-400 leading-relaxed">{body}</p>
         </div>
       </Card>
 
-      <Button variant="ghost" size="block" fullWidth onClick={onAddAnother}>
-        Add Another Place
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Link
+          href={`/plan/${tripId}`}
+          className={buttonStyles({ variant: "primary", size: "block" })}
+        >
+          Back to trip
+        </Link>
+        <Button variant="ghost" size="block" fullWidth onClick={onAddAnother}>
+          Add another place
+        </Button>
+      </div>
     </div>
   );
 }

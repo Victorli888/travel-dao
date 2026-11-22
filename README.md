@@ -1,20 +1,18 @@
 # Dao 道
 
-A personal travel planner with two features:
+A personal travel planner:
 
 - **Day Planner** (`/plan`): plan a trip day by day. Name a trip, set its dates,
   get one column per day, and keep every activity saved for the trip in an
   Activity Bank. Its data lives in Neon Postgres.
-- **Write to Notion** (`/write-to-notion`): describe a place in one line and it
-  lands in your Notion travel planner, researched and filed under the right
-  city and category.
+- **Research a place** (`/plan/[tripId]/add`): describe a place in one line;
+  Claude confirms what's at that address, summarises it, and saves it to that
+  trip's activity bank.
 
-For Write to Notion, you type
+For research, you type
 `Patisserie Rau, 169 Higashiyama, Yamashina Ward, Kyoto 607-8322, Japan`.
 Claude confirms what actually sits at that address, writes a summary and opening
-hours, picks a category, and creates the Notion entry at
-`Kyoto > Good Eats > Dessert > Patisserie Rau`. For this feature Notion is the
-source of truth; nothing it researches is saved to Postgres yet.
+hours, and inserts an `activities` row. The activity bank is the source of truth.
 
 `/` is a landing page that introduces the planner.
 
@@ -26,33 +24,21 @@ source of truth; nothing it researches is saved to Postgres yet.
 - Create a trip from a name and two dates, or reopen one you started.
 - Each trip gets one column per calendar day, generated the first time you open
   it. A day can be given a name; without one it shows its date.
-- The Activity Bank is a read-only dialog over every activity saved for the
-  trip, with search that ignores accents.
-- Not built yet: adding an activity from the UI, placing one on a day, and
-  reordering a day. The data layer for all three exists in `lib/itinerary/`.
-  Until the UI does, the Activity Bank is empty.
+- The Activity Bank lists every activity saved for the trip, with search that
+  ignores accents. Research adds new ones from `/plan/[tripId]/add`.
+- Not built yet: placing an activity on a day from the UI, and reordering a day.
+  The data layer for both exists in `lib/itinerary/`.
 
-**Research and file a place**
+**Research and save a place**
 - One free-form input: place name plus full address.
 - The address is treated as ground truth. A name alone is ambiguous — "Kamekichi"
   could be a watch shop, a ramen bar, or a craft store — so the business type is
-  confirmed against the address before anything is written.
-- Produces a canonical name, confirmed address, a 2–4 sentence summary, and
-  opening hours. Anything unverifiable is written as "Unknown / not verified"
+  confirmed against the address before anything is saved.
+- Produces a canonical name, confirmed address, neighbourhood (`area`), a 2–4
+  sentence summary, and opening hours. Anything unverifiable is labeled as such
   rather than guessed.
-
-**Automatic categorisation**
-- One top-level category and one subcategory from a fixed taxonomy
-  (`lib/research/taxonomy.ts`): Good Eats, Shopping & Markets, Activities.
-- The category follows the confirmed business type, not the name — a watch store
-  files under Shopping & Markets no matter what its name sounds like.
-
-**Notion writing over MCP**
-- Finds or creates the city page under your planner page, ensures the category
-  toggles exist, and adds the entry as a nested toggle.
-- Runs as a real agentic loop: Claude calls Notion MCP tools, sees the results,
-  and adjusts. Tool failures come back to the model as errors so it can recover
-  instead of aborting the run.
+- Claude submits via a host tool (`submit_activity`); the route calls
+  `addActivity` and returns the saved row.
 
 **Access control**
 - Google OAuth via Auth.js. Every route except `/login`, `/unauthorized`, and
@@ -62,8 +48,8 @@ source of truth; nothing it researches is saved to Postgres yet.
 
 **Interface**
 - Auto-growing input with rotating example placeholders.
-- Optimistic progress indicator during the 20–50 second call.
-- Success card showing the Notion breadcrumb it wrote to.
+- Optimistic progress indicator during the research call.
+- Success card showing the activity that landed in the bank.
 
 ---
 
@@ -77,7 +63,6 @@ source of truth; nothing it researches is saved to Postgres yet.
 | Auth | Auth.js / next-auth 5.0.0-beta.31, Google provider |
 | Database | Neon serverless Postgres (`@neondatabase/serverless` 1.1), Drizzle ORM 0.45 + drizzle-kit 0.31 |
 | AI | `@anthropic-ai/sdk` 0.40, model `claude-haiku-4-5-20251001` |
-| Tools | `@modelcontextprotocol/sdk` 1.29 + `@notionhq/notion-mcp-server` 2.2 over stdio |
 | Validation | zod 4.4 (request body and environment) |
 | Tests | Vitest 3.2, node environment |
 
@@ -93,10 +78,6 @@ Request bodies are bounded at 3–500 characters.
 
 - Node.js 20 or newer (developed on 23.11).
 - An [Anthropic API key](https://console.anthropic.com/).
-- A Notion internal integration token (`ntn_…`) from
-  [notion.so/my-integrations](https://www.notion.so/my-integrations), **shared with
-  your planner page** — the integration cannot see pages you have not explicitly
-  connected it to.
 - A [Neon](https://console.neon.tech/) Postgres database.
 - Google OAuth credentials from the
   [Google Cloud console](https://console.cloud.google.com/), with
@@ -112,15 +93,14 @@ cp .env.example .env.local   # then fill in every value
 | Variable | What it is |
 |---|---|
 | `ANTHROPIC_API_KEY` | Anthropic API key |
-| `NOTION_API_KEY` | Notion integration token, shared with your planner page |
-| `NOTION_PAGE_NAME` | Exact title of the parent Notion page (default `Travel Planner`) |
 | `DATABASE_URL` | Neon connection string |
 | `AUTH_SECRET` | Generate with `openssl rand -base64 32` |
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
 
-`lib/api/env.ts` validates the first four with zod and fails loudly, naming
-whatever is missing. The `AUTH_*` variables are read by Auth.js itself.
+`lib/api/env.ts` validates `ANTHROPIC_API_KEY` and `DATABASE_URL` with zod and
+fails loudly, naming whatever is missing. The `AUTH_*` variables are read by
+Auth.js itself.
 
 ### Set up the database
 
@@ -162,40 +142,30 @@ npm run db:studio   # Drizzle Studio
 ```
 
 Sign in at `/login` with an allow-listed Google account. Plan a trip at `/plan`,
-or submit a place at `/write-to-notion`, where the first call takes 20–50
-seconds.
+then research a place from a trip via **Add activity**.
 
 ---
 
 ## How it works
 
 **Day Planner.** `/plan` and `/plan/[tripId]` are Server Components that call
-`lib/itinerary/` directly, and writes are Server Actions; the planner has no API
-routes. Every write is a single SQL statement, because the Neon HTTP driver has
-no interactive transactions. `CLAUDE.md` → *Data model* has the rules.
+`lib/itinerary/` directly, and writes are Server Actions. Every write is a
+single SQL statement, because the Neon HTTP driver has no interactive
+transactions. `CLAUDE.md` → *Data model* has the rules.
 
-**Write to Notion:**
+**Research → activity bank:**
 
 ```
-ChatInput → ResearchPanel → useResearch.submit
-          → POST /api/research
-          → parseResearchRequest (zod)  →  runResearchAgent
-                                             ├─ spawn Notion MCP subprocess
-                                             ├─ buildSystemPrompt (taxonomy injected)
-                                             └─ runAgentLoop  ⟳ prompt → tools → repeat
-          → parseNotionPath → SuccessCardView
+ChatInput → ResearchPanel → useResearch.submit(tripId)
+          → POST /api/research { message, tripId }
+          → parseResearchRequest → requireUserEmail → runResearchAgent
+               └─ runAgentLoop  ⟳ prompt → submit_activity → repeat
+          → addActivity → SuccessCardView
 ```
 
-The codebase is organised by layer, and `components/ResearchPanel.tsx` is the only
-stateful orchestrator — everything under `components/ui/` and
-`components/research/` is presentational. `CLAUDE.md` documents the layer map, the
-rule that decides where new code goes, and a couple of gotchas worth reading before
-you touch auth or the MCP client.
-
-Notion MCP runs as a **local stdio subprocess**, not the remote `mcp.notion.com`
-server, because the local one accepts internal integration tokens while the remote
-one requires OAuth. Tool calls are executed by our own loop rather than server-side
-by the Anthropic API.
+The codebase is organised by layer, and `components/ResearchPanel.tsx` is the
+only stateful research orchestrator — everything under `components/ui/` and
+`components/research/` is presentational. `CLAUDE.md` documents the layer map.
 
 ---
 
@@ -204,21 +174,18 @@ by the Anthropic API.
 Nothing here is scheduled — this is the parking lot.
 
 **Known gaps**
-- [ ] No test coverage on the React layer. `ResearchPanel`, the three hooks, and
-      the views are verified by screenshot only; closing this means adding a React
+- [ ] No test coverage on the React layer. Closing this means adding a React
       test environment (`@vitejs/plugin-react` + jsdom).
-- [ ] Deployment is unproven. `lib/mcp/notion-client.ts` resolves the MCP server
-      from `node_modules/.bin` and spawns a child process, which does not
-      obviously survive a serverless target. `maxDuration = 120` also needs a plan
-      that permits long function timeouts.
+- [ ] Research route `maxDuration = 120` needs a deploy target that permits
+      long function timeouts.
 - [ ] `UpstreamAuthError` returns 500 where 502 is more accurate.
 - [ ] `git merge` / `git rebase` are unguarded relative to the commit policy in
       `docs/working-with-claude.md`.
 
 **Ideas**
-- [ ] Read back from Notion — list or search what you have already saved, instead
-      of the app being write-only.
-- [ ] Reuse `TAXONOMY` in the UI for category filters; it is currently server-only.
+- [ ] Activity identity key so regenerating the same place does not create a
+      duplicate row.
+- [ ] Rejection memory so poorly scored places are not suggested again.
 - [ ] Bulk entry — paste several places at once.
 - [ ] Edit or correct an entry after it is written.
 - [ ] Self-serve access requests rather than a mailto link.

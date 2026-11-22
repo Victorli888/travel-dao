@@ -18,12 +18,6 @@ export default function LandingHero() {
         >
           Start planning
         </Link>
-        <Link
-          href="/write-to-notion"
-          className={buttonStyles({ variant: "taoQuiet", size: "bare" })}
-        >
-          Or save a place to Notion
-        </Link>
       </div>
     </header>
   );

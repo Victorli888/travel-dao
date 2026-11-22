@@ -10,10 +10,10 @@ export default function LandingNav() {
         <span className="text-[15px] text-tao-soft">道</span>
       </Link>
       <Link
-        href="/write-to-notion"
+        href="/plan"
         className="text-[13px] font-medium text-ink-subtle underline-offset-4 transition-colors hover:text-ember"
       >
-        Write to Notion
+        Your trips
       </Link>
     </nav>
   );
