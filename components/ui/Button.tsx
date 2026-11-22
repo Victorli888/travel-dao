@@ -4,6 +4,9 @@ const VARIANTS = {
   /** Purple call-to-action. */
   primary:
     "bg-accent hover:bg-accent-bright text-white font-semibold transition-colors",
+  /** Bordered, low-emphasis action on a dark surface — the email-code request. */
+  ghost:
+    "border border-line text-zinc-400 hover:text-zinc-200 hover:border-line-strong hover:bg-white/5 font-medium transition-all",
   /** Solid white — reserved for third-party sign-in. */
   white:
     "bg-white hover:bg-zinc-100 text-zinc-900 font-semibold transition-colors",
@@ -20,6 +23,8 @@ const VARIANTS = {
    */
   ember:
     "bg-ember text-ink hover:bg-ember/85 font-semibold shadow-sm shadow-ember/20 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tao",
+  /** Quiet text action on the light palette — sign-out on `/plan`. */
+  taoQuiet: "text-ink-subtle hover:text-tao font-medium transition-colors",
 } as const;
 
 const SIZES = {
