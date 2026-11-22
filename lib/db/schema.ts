@@ -37,6 +37,68 @@ export const allowedEmails = pgTable(
 );
 
 /* -------------------------------------------------------------------------- */
+/* Authentication                                                             */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Neither table has a foreign key to `allowed_emails`, on purpose. A row here
+ * is not ownership — it is a sign-in attempt or a live session — and both
+ * exist for addresses that are *not* on the list: an OTP request is recorded
+ * for every address so rate limits and response timing are the same whether
+ * or not it can sign in, and a Google user who is turned away still holds a
+ * session so `/unauthorized` can show them who they are.
+ */
+
+/**
+ * One-time sign-in codes. `code_hash` is an HMAC of the email and the code
+ * keyed by `AUTH_SECRET` — the code itself is never stored. Only the newest
+ * row for an email is ever checked; older ones are dead on arrival of a new
+ * one. `attempts` caps guesses, `consumed_at` makes a code single-use.
+ */
+export const emailOtps = pgTable(
+  "email_otps",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    /** NULL when the request carried no client address; skips the IP limit. */
+    requestIp: text("request_ip"),
+    attempts: integer("attempts").default(0).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index("idx_email_otps_email_created").on(t.email, t.createdAt),
+    index("idx_email_otps_ip_created").on(t.requestIp, t.createdAt),
+  ],
+);
+
+/**
+ * Server-side record of every signed-in browser. The session cookie is an
+ * Auth.js JWT carrying this row's `id`; the JWT is only honoured while the row
+ * is unrevoked and unexpired, which is what makes sign-out and revocation
+ * real rather than "delete the cookie and hope".
+ */
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    userEmail: text("user_email").notNull(),
+    /** Auth.js provider id: `google` or `email-otp`. */
+    provider: text("provider").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [index("idx_auth_sessions_user_email").on(t.userEmail)],
+);
+
+/* -------------------------------------------------------------------------- */
 /* Trips                                                                      */
 /* -------------------------------------------------------------------------- */
 
