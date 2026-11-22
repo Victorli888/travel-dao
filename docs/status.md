@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated: 2026-11-21.**
+**Last updated: 2026-11-22.**
 Update this when a feature lands, a decision is made, or a branch is merged.
 Change the date when you do.
 
@@ -32,6 +32,9 @@ dropped) no longer exists locally or on `origin`.
   `shape`, `schemas`, `format` and `pg-errors` are pure unit tests, and
   `crud.test.ts` is the live database suite.
 - **Landing page at `/`.** The Notion tool moved to `/write-to-notion`.
+  Redesigned on 2026-11-22 (`feat/landing-page-redesign`): hero with a route
+  illustration, benefits, three steps, the two tools, a closing call to
+  action. Still wholly static, and still behind sign-in like every route.
 - **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
   Frame 0.
 - **`/plan/[tripId]`**: one column per day, listing the activities placed on
