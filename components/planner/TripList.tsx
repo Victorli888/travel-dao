@@ -7,11 +7,27 @@ interface Props {
 }
 
 /**
- * Pure, and deliberately not a client component. Renders nothing at all when
- * there are no trips, so a first-time visitor sees only the form.
+ * Pure, and deliberately not a client component. With no trips it renders a
+ * quiet placeholder in the same slot, so a first-time visitor learns where
+ * their trips will gather instead of meeting a blank page under the form.
  */
 export default function TripList({ trips }: Props) {
-  if (trips.length === 0) return null;
+  if (trips.length === 0) {
+    return (
+      <section className="pb-16">
+        <div className="rule-fade" />
+        <div className="mt-8 rounded-2xl border border-dashed border-rule px-5 py-8 text-center sm:py-10">
+          <p className="m-0 text-[16px] font-medium tracking-tight text-ink">
+            No trips yet
+          </p>
+          <p className="mx-auto mt-2 max-w-[42ch] text-[14px] leading-relaxed text-ink-subtle">
+            Name one and set its dates above. It will wait here, ready to
+            reopen, whenever you come back.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="pb-16">
