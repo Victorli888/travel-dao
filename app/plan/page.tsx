@@ -1,6 +1,8 @@
 import Link from "next/link";
 import NewTripForm from "@/components/planner/NewTripForm";
 import TripList from "@/components/planner/TripList";
+import Button from "@/components/ui/Button";
+import { signOutAction } from "@/app/login/actions";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { cn } from "@/lib/cn";
 import { container, eyebrow, focusRing } from "@/components/landing/styles";
@@ -39,10 +41,17 @@ export default async function PlanPage() {
               道
             </span>
           </Link>
-          <Link href="/activity-bank"
-            className={cn("rounded-md text-[13px] font-medium text-tao underline-offset-4 hover:underline", focusRing)}>
-            Activity Bank
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link href="/activity-bank"
+              className={cn("rounded-md text-[13px] font-medium text-tao underline-offset-4 hover:underline", focusRing)}>
+              Activity Bank
+            </Link>
+            <form action={signOutAction}>
+              <Button type="submit" variant="taoQuiet" size="bare">
+                Sign out
+              </Button>
+            </form>
+          </div>
         </nav>
       </div>
 

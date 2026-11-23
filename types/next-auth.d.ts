@@ -21,5 +21,10 @@ declare module "@auth/core/jwt" {
   interface JWT {
     /** Undefined until the first sign-in populates it. */
     isAllowed?: boolean;
+    /**
+     * The `auth_sessions` row this token belongs to. The token is honoured
+     * only while that row is unrevoked and unexpired.
+     */
+    sid?: string;
   }
 }

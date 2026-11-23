@@ -62,6 +62,28 @@ dropped) no longer exists locally or on `origin`.
   `docs/` holds only feature-work context, and `.github/pr-template.md` is
   the PR description format (PR #4).
 
+## Email sign-in (branch `feat/email-otp-login`)
+
+- **Sign in with an emailed 6-digit code**, alongside Google. `/login` takes
+  the email, `/login/verify` takes the code. Both providers resolve to the same
+  lower-cased email; neither adds anyone to `allowed_emails`.
+- **Private: no new accounts.** A correct code for an address not on
+  `allowed_emails` is refused with the same message as a wrong one, and no
+  session is created. Allowed status is re-read on every request, so removing
+  an address from `allowed_emails` sends that user to `/unauthorized` on their
+  next request. There is still no way to *disable* a user who owns trips:
+  deleting their `allowed_emails` row fails on the trips/activities FKs
+  (fix C, a `disabled_at` column, was not taken).
+- **Server-side sessions.** Every session JWT now carries an `auth_sessions`
+  row id and is refused once that row is revoked or 30 days old. Sign-out is
+  on `/plan`. Tokens issued before this have no row, so **everyone signs in
+  once more** after it deploys.
+- **Before deploying:** apply migration `drizzle/0010_email_otp_auth.sql`
+  (`npm run db:migrate`, needs a yes — Neon is the only database), and set
+  `RESEND_API_KEY` + `MAIL_FROM`; production refuses to send codes without
+  them. Migration 0010 was applied to Neon on 2026-11-22; a browser sign-in
+  against Neon is still untested.
+
 ## In this worktree
 
 - Removed Notion page generation from the app, including its UI and API route.

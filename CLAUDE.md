@@ -43,7 +43,9 @@ Copy `.env.example` to `.env.local` and populate every variable.
 `lib/api/env.ts` parses and caches `DATABASE_URL` and throws a `ConfigError`
 when the value is missing or invalid. Parsing happens on first use so
 database configuration errors surface when a caller needs the database.
-Auth.js reads the `AUTH_*` variables directly.
+Auth.js reads the `AUTH_*` variables directly; `AUTH_SECRET` is also the OTP
+hashing key (`lib/auth/otp-secret.ts`). `RESEND_API_KEY` and `MAIL_FROM` are
+optional and parsed by `lib/mail/mailer.ts` — see Auth.
 
 ## Architecture
 
@@ -74,12 +76,13 @@ would reintroduce exactly the failure the rule exists to prevent.
 
 ### Data model
 
-`lib/db/schema.ts` is the single source of truth — **five tables**,
+`lib/db/schema.ts` is the single source of truth — **seven tables**,
 grouped in the file by concern:
 
 | Group | Tables |
 | --- | --- |
 | Access control | `allowed_emails` |
+| Authentication | `email_otps`, `auth_sessions` |
 | Trips | `trips` |
 | Itinerary | `day_itineraries`, `day_itinerary_activities` |
 | Activities | `activities` |
@@ -216,7 +219,9 @@ in a hook or in `lib/`, with the containers below owning local interaction state
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
 | `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank`/`day-plan` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
-| `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). |
+| `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). `config.ts` is the Auth.js config factory; `otp.ts` (pure) + `otp-service.ts` (deps-injected) + `otp-store.ts` (Neon) are email-code sign-in; `sessions.ts` and `cookies.ts` are the server-side session and its cookie. |
+| `lib/mail/`                    | `mailer.ts` — the `Mailer` interface, a Resend implementation over `fetch`, and a console fallback for development. |
+| `components/auth/`             | Presentational pieces of `/login` and `/login/verify`. Same rule as `components/ui/`; no client components. |
 | `lib/api/` | Server environment validation and application errors. |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
 | `sql/`                         | Raw-SQL validation against the schema. `validate-itinerary.sql` builds a fake trip, asserts the Data model invariants above, and ROLLBACKs — it writes nothing and is never imported by app code. |
@@ -246,12 +251,60 @@ environment validation, and planner actions.
 
 ### Auth
 
-Google OAuth via Auth.js v5. `middleware.ts` keeps `/`, `/login`, `/unauthorized`, and `/api/auth` public. Access is an allow-list:
-`lib/auth/allowlist.ts` checks the `allowed_emails` table in Neon, the JWT
-callback stores the result, and `types/next-auth.d.ts` augments `Session`
-and `JWT` so `session.user.isAllowed` is typed rather than cast. The JWT
-augmentation targets `@auth/core/jwt` — `next-auth/jwt` only re-exports the
-interface, and augmenting a re-export does not merge.
+Auth.js v5, two providers, one identity. Google OAuth, and an email
+one-time code (the Credentials provider `email-otp`). Both end at the same
+lower-cased email, and that email is the whole user — see Data model. **The
+app is private: neither provider adds anyone to `allowed_emails`.** Signing in
+proves who you are, the allow-list decides whether you get in. The email-code
+provider refuses an address that is not on the list outright (`authorize()`,
+same generic failure as a wrong code, no session row); a Google sign-in that is
+not on the list gets a session and lands on `/unauthorized`, which shows who
+they are and how to ask for access. `middleware.ts` gates every path except
+`/` (matched exactly — a prefix match on `/` would make every route public),
+`/login` (and `/login/verify`), `/unauthorized`, and `api/auth`. The decision
+is `routeAccess` in `lib/auth/route-access.ts`; `api/auth` never reaches it,
+because the middleware matcher excludes it.
+
+`auth.ts` only wires live deps into `createAuthConfig` (`lib/auth/config.ts`);
+the factory exists so `config.test.ts` drives real Auth.js sign-ins with fakes
+and asserts the actual `Set-Cookie`. `types/next-auth.d.ts` augments `Session`
+and `JWT` (`isAllowed`, `sid`). The JWT augmentation targets `@auth/core/jwt` —
+`next-auth/jwt` only re-exports the interface, and augmenting a re-export does
+not merge.
+
+- **Sessions are JWTs backed by a row.** Credentials forces the JWT strategy,
+  so every token carries the id of an `auth_sessions` row (`sid`) and the
+  `jwt` callback re-checks that row on every `auth()` call, returning `null`
+  — which makes Auth.js clear the cookie — once it is revoked or expired.
+  Sign-out revokes it in `events.signOut`. A token with no `sid` is refused.
+  The same read LEFT JOINs `allowed_emails` and refreshes `isAllowed`, so
+  **removing an email from the list takes effect on that user's next
+  request**, sending them to `/unauthorized`; never cache it from sign-in.
+  That is one Neon read per authenticated request, middleware included.
+- **The cookie is persistent and its flags are pinned** in `lib/auth/cookies.ts`:
+  `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age`/`Expires` of 30 days, and
+  `Secure` + the `__Secure-` prefix in production. Change the name and the
+  flag together; browsers drop a `__Secure-` cookie without `Secure`.
+- **Everything `auth.ts` imports must run on the edge**, because middleware
+  bundles it. Hence Web Crypto rather than `node:crypto` in `otp.ts`, raw
+  `getSql`, and `fetch` for mail.
+- **OTP codes are never stored**, only an HMAC of `email:code` keyed by
+  `AUTH_SECRET`. Only the newest code for an email is checked; it lives ten
+  minutes, works once, and dies after five wrong guesses. Each store method
+  is one statement — the rate limit is inside the `INSERT ... SELECT`, and an
+  attempt is recorded only if the attempt count is unchanged since it was read.
+- **Answers never reveal whether an address can sign in.** A code request
+  writes a row and returns the same thing for every address, and mail is sent
+  in `after()` so an allowed address is not measurably slower. Only the email
+  itself is conditional. Keep `lib/auth/login-messages.ts` generic.
+- Mail: `RESEND_API_KEY` + `MAIL_FROM` selects Resend; with neither, the code
+  is logged to the console in development and `getMailer` throws in
+  production rather than log a code.
+  Every Resend send carries an `Idempotency-Key` (one per OTP request, reused
+  across retries), retries only network errors, 5xx and 429 (honouring
+  `Retry-After`, capped so `after()` cannot hang), never other 4xx, and counts
+  as sent only with an `id` in the body. It logs that id, never the recipient,
+  body or key.
 
 ### Styling
 
