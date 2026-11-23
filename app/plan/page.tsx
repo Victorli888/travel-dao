@@ -39,15 +39,6 @@ export default async function PlanPage() {
               道
             </span>
           </Link>
-          <Link
-            href="/write-to-notion"
-            className={cn(
-              "rounded-md text-[14px] font-medium text-ink-subtle transition-colors hover:text-tao",
-              focusRing,
-            )}
-          >
-            Write to Notion
-          </Link>
         </nav>
       </div>
 

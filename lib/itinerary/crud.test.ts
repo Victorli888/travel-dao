@@ -64,13 +64,6 @@ live("itinerary data access layer", () => {
     // has resolved it yet, so pointing it at the test database here is enough.
     process.env.DATABASE_URL = DATABASE_URL;
 
-    // `getEnv()` validates the whole schema in one go, so reaching the
-    // database also requires the Anthropic and Notion keys to be *present*.
-    // Nothing in this layer reads them; these placeholders exist only to get
-    // past that check, and are named so a stray use would be obvious.
-    process.env.ANTHROPIC_API_KEY ||= "unused-by-the-data-layer";
-    process.env.NOTION_API_KEY ||= "unused-by-the-data-layer";
-
     // `trips_user_email_fkey` requires the owner to be on the allow-list.
     const sql = getSql();
     await sql`insert into allowed_emails (email) values (${EMAIL}) on conflict (email) do nothing`;

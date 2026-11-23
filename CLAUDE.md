@@ -40,34 +40,25 @@ npm run db:studio   # Drizzle Studio
 
 Copy `.env.example` to `.env.local` and populate every variable.
 
-`lib/api/env.ts` parses and caches the four variables the app's own code
-reads (`ANTHROPIC_API_KEY`, `NOTION_API_KEY`, `NOTION_PAGE_NAME`,
-`DATABASE_URL`) and throws a `ConfigError` naming whatever is missing.
-Parsing is lazy on purpose — throwing at module load would take down
-middleware and every route rather than the one call that needs the key.
-The `AUTH_*` variables are read by Auth.js directly and are not in that
-schema.
+`lib/api/env.ts` parses and caches `DATABASE_URL` and throws a `ConfigError`
+when the value is missing or invalid. Parsing happens on first use so
+database configuration errors surface when a caller needs the database.
+Auth.js reads the `AUTH_*` variables directly.
 
 ## Architecture
 
-Next.js 15 App Router app with two features and one route each:
+The Day Planner uses the Next.js 15 App Router.
 
 | Route | Feature |
 | --- | --- |
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. **The one public page**: `lib/auth/route-access.ts` matches it exactly — a prefix match on `/` would make every route public. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
 | `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
-| `/write-to-notion` | One input, one API route, one agentic Claude run that writes to Notion. |
-
-The Notion flow is described below and is unchanged. The planner has a full
-data layer (`lib/itinerary/`) and the first screen on top of it.
 
 **The planner has no API routes and should not grow any.** `/plan` and
 `/plan/[tripId]` are Server Components that call `lib/itinerary/` directly,
 and the one mutation is the Server Action in `app/plan/actions.ts`. See the
-note in `lib/itinerary/index.ts`. The `ok()`/`fail()` envelope in
-`lib/api/responses.ts` belongs to the Notion flow — it is typed to
-`ResearchResponse` and does not generalise.
+note in `lib/itinerary/index.ts`.
 
 **Creating a trip and generating its days are two requests, on purpose.**
 `createTripAction` performs exactly one write and redirects;
@@ -207,28 +198,21 @@ migration through `psql` to see the actual failure.
 
 ### Layers
 
-Each directory is one layer. The rule that decides where code goes:
-**a file in** `components/ui/` **or** `components/research/` **may not call** `fetch`**,
-may not hold a** `useState` **that outlives a keystroke, and may not parse or
-transform domain data.** Anything that does belongs in a hook, in `lib/`,
-or in the orchestrator.
+Files in `components/ui/` and planner views may not call `fetch`, hold
+state that outlives a keystroke, or transform domain data. Put that logic
+in a hook or in `lib/`, with the containers below owning local interaction state.
 
 
 | Directory                      | Contains                                                                                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/`                         | Routes only. Thin — `app/page.tsx` is a server component that renders `PageShell` + `ResearchPanel`.                                                    |
-| `components/ResearchPanel.tsx` | The **only** stateful orchestrator. Owns the request lifecycle, picks the view, does the one bit of data shaping the success view needs.                |
-| `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `ErrorBanner`, `icons`.                            |
-| `components/research/`         | Presentational feature views. `ChatInput` is the one container here — it holds input-local draft state only and delegates rendering to `ChatInputView`. |
-| `components/planner/`          | Presentational views for `/plan`. Same rule as `components/research/`, and **two** containers hold to it: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle) and `ActivityBank` (a draft search string and two refs). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
+| `app/` | Routes and Server Actions. Server Components call the data layer directly. |
+| `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `icons`.                            |
+| `components/planner/`          | Presentational views for `/plan`. Two containers own local interaction state: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle) and `ActivityBank` (a draft search string and two refs). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
-| `hooks/`                       | Behavior lifted out of components: `useResearch` (request lifecycle), `useAutoResizeTextarea`, `useRotatingIndex`.                                      |
-| `lib/research/`                | Server-side domain: `taxonomy`, `prompt`, `agent`, `schema`, plus the client-safe `parse-reply`.                                                        |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
 | `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
 | `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). |
-| `lib/mcp/`                     | `notion-client.ts` — MCP transport and tool translation.                                                                                                |
-| `lib/api/`                     | `env`, `errors`, `responses` (server) and `research-client` (browser).                                                                                  |
+| `lib/api/` | Server environment validation and application errors. |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
 | `sql/`                         | Raw-SQL validation against the schema. `validate-itinerary.sql` builds a fake trip, asserts the Data model invariants above, and ROLLBACKs — it writes nothing and is never imported by app code. |
 
@@ -250,53 +234,14 @@ paints `dialog` with `Canvas`/`CanvasText`, so `.tao-ground` does not reach in,
 and `::backdrop` inherits nothing), and padding belongs on the inner sections,
 since a backdrop click targets the `<dialog>` element itself.
 
-### Request flow
-
-1. `ChatInput` → `ResearchPanel` → `useResearch.submit`
-2. `postResearch` (`lib/api/research-client.ts`) POSTs to `/api/research`
-3. The route validates the body with `parseResearchRequest` and calls
-  `runResearchAgent`
-4. `runResearchAgent` spawns the Notion MCP subprocess, builds the system
-  prompt, and hands both to `runAgentLoop`
-5. `runAgentLoop` prompts Claude, executes any tool calls, and repeats until
-  the model stops (bounded by `MAX_ITERATIONS`); the MCP subprocess is torn
-   down in a `finally`
-6. `ResearchPanel` runs `parseNotionPath` over the reply and renders
-  `SuccessCardView`
-
-
-
-### The agent loop
-
-`runAgentLoop` takes an `AgentDeps` object (`listTools`, `createMessage`,
-`callTool`) rather than reaching for clients itself, so the control flow is
-tested with plain fakes in `lib/research/agent.test.ts`. `runResearchAgent`
-is the thin wiring that supplies the real Anthropic client and MCP
-subprocess.
-
-Notion MCP runs as a **local stdio subprocess** (`@notionhq/notion-mcp-server`,
-resolved from `node_modules/.bin`), not the remote `mcp.notion.com` server —
-the local one accepts internal integration tokens (`ntn_...`) via
-`OPENAPI_MCP_HEADERS`, where the remote one requires OAuth. Tool calls are
-executed by our own loop, not server-side by the Anthropic API.
-
-Tool failures come back as `is_error` tool results rather than throwing, so
-the model can see them and adjust. Credential rejections are classified into
-`UpstreamAuthError` at the MCP boundary — never by matching substrings
-against an error message further up the stack.
-
 ### Errors
 
-`lib/api/errors.ts` defines `AppError` subclasses that carry their own
-status and code (`ValidationError` 400, `ConfigError` 500,
-`UpstreamAuthError` 500). `lib/api/responses.ts` is the single place an
-error becomes a status code and a user-facing string; route handlers never
-branch on status.
+`lib/api/errors.ts` defines the application errors used by the data layer,
+environment validation, and planner actions.
 
 ### Auth
 
-Google OAuth via Auth.js v5. `middleware.ts` gates every path except
-`/login`, `/unauthorized`, and `api/auth`. Access is an allow-list:
+Google OAuth via Auth.js v5. `middleware.ts` keeps `/`, `/login`, `/unauthorized`, and `/api/auth` public. Access is an allow-list:
 `lib/auth/allowlist.ts` checks the `allowed_emails` table in Neon, the JWT
 callback stores the result, and `types/next-auth.d.ts` augments `Session`
 and `JWT` so `session.user.isAllowed` is typed rather than cast. The JWT
@@ -317,7 +262,7 @@ also how you tell, by reading it, which half of the app it belongs to.
 
 | Family | Tokens | Used by |
 | --- | --- | --- |
-| Dark | `canvas`, `surface`, `surface-raised`, `line`, `line-strong`, `accent` / `accent-bright` / `accent-light` / `accent-pale` | `/write-to-notion` and the auth pages |
+| Dark | `canvas`, `surface`, `line`, `accent` / `accent-bright` / `accent-light` / `accent-pale` | Auth pages |
 | Light | `paper` / `paper-raised`, `ink` / `ink-muted` / `ink-subtle`, `rule` / `rule-strong`, `tao` / `tao-bright` / `tao-soft` / `tao-wash`, `sky`, `ember` | `/` and `/plan` |
 
 The light family comes from the Day Planner design system. Two conventions

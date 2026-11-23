@@ -106,8 +106,6 @@ A yes covers that one action, not the next one like it.
 - **"Frame N"** is page N+1 of `scratch/Itinerary-Wireframes.pdf`. See
   [product.md](product.md#the-wireframes).
 - **"The layer rule"**: `CLAUDE.md` → *Layers*.
-- **"Step 0"** is the agent-persistence decision in
-  [status.md](status.md#step-0-where-the-research-agent-saves).
 
 ## Where preferences go
 

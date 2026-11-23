@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { buttonStyles } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
 import RouteIllustration from "@/components/landing/RouteIllustration";
-import { focusRing } from "@/components/landing/styles";
 
 export default function LandingHero() {
   return (
@@ -26,15 +24,6 @@ export default function LandingHero() {
             className={buttonStyles({ variant: "ember", size: "md", className: "px-6" })}
           >
             Start planning
-          </Link>
-          <Link
-            href="/write-to-notion"
-            className={cn(
-              "rounded-md text-[15px] font-medium text-tao underline decoration-sky decoration-2 underline-offset-[6px] transition-colors hover:decoration-tao",
-              focusRing,
-            )}
-          >
-            Or save a place to Notion
           </Link>
         </div>
         <p className="m-0 mt-8 text-[13px] text-ink-subtle">

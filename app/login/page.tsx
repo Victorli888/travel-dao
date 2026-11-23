@@ -8,7 +8,7 @@ import { requestAccessMailto } from "@/lib/constants";
 
 export default function LoginPage() {
   return (
-    <PageShell width="sm">
+    <PageShell>
       <div className="mb-10">
         <Wordmark tagline="Sign in to continue" />
       </div>

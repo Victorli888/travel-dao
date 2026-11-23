@@ -5,16 +5,9 @@
 
 ## What it is
 
-A personal travel planner with two features, for allow-listed users only
-(Google sign-in plus the `allowed_emails` table).
-
-1. **Write to Notion** (`/write-to-notion`). Type a place and its full
-   address. A Claude agent confirms what's actually at that address,
-   summarises it, picks a category, and files it into your Notion travel
-   planner over MCP. This is the original app, and it's complete.
-2. **The Day Planner** (`/plan`). Plan a trip day by day. Save activities to
-   a trip, place them on days, order them. This is the feature being built
-   now. Its data lives in Postgres (Neon), not Notion.
+A personal travel planner for allow-listed users (Google sign-in plus the
+`allowed_emails` table). The Day Planner (`/plan`) organises trips day by day
+and keeps their activities in Neon Postgres.
 
 The landing page at `/` introduces the planner.
 

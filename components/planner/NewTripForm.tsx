@@ -38,9 +38,8 @@ const FOCUS_TARGETS: Record<NewTripField, string[]> = {
 };
 
 /**
- * The container for `/plan`'s form, on the same terms as `ChatInput` in
- * `components/research/`: form-local state and the request lifecycle,
- * nothing else. Rendering belongs to `NewTripFormView`.
+ * Owns form-local state and the request lifecycle. Rendering belongs to
+ * `NewTripFormView`.
  *
  * The three values are mirrored in state to drive the summary, the hints and
  * whether submit is live. The values the server reads come from the

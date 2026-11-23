@@ -27,13 +27,6 @@ export class ConfigError extends AppError {
   }
 }
 
-/** A third-party service rejected our credentials. */
-export class UpstreamAuthError extends AppError {
-  constructor(message: string) {
-    super(message, 500, "upstream_auth");
-  }
-}
-
 /**
  * The row does not exist, or is not this user's to see. The two are the same
  * error on purpose: every query is scoped by `user_email`, so a miss and a
