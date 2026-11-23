@@ -13,5 +13,7 @@ export function otpEmail(to: string, code: string): MailMessage {
       `It expires in ${minutes} minutes and works once.`,
       "If you didn't ask to sign in, you can ignore this email.",
     ].join("\n"),
+    // One per OTP request, so a retried send of this code is never doubled.
+    idempotencyKey: `otp-code/${crypto.randomUUID()}`,
   };
 }
