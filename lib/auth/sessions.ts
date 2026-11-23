@@ -7,9 +7,20 @@ import { SESSION_MAX_AGE_SECONDS } from "./cookies";
  * `auth()` call, so revoking the row signs that browser out on its next
  * request. Each function is one statement.
  */
+
+/** A live session, and whether its email is on the allow-list right now. */
+export interface SessionStatus {
+  allowed: boolean;
+}
+
 export interface SessionStore {
   create(email: string, provider: string): Promise<string>;
-  isActive(id: string): Promise<boolean>;
+  /**
+   * Null when the session is revoked, expired or unknown. Otherwise the
+   * allow-list is read in the same statement, so removing an email takes
+   * effect on that user's next request rather than when the JWT expires.
+   */
+  status(id: string): Promise<SessionStatus | null>;
   revoke(id: string): Promise<void>;
 }
 
@@ -25,14 +36,19 @@ export const neonSessionStore: SessionStore = {
     return String(rows[0].id);
   },
 
-  async isActive(id) {
+  async status(id) {
     const sql = getSql();
+    // LEFT JOIN: a session whose email has left the list is still a session —
+    // it comes back `allowed: false` and lands on /unauthorized, the same as
+    // a Google sign-in that was never on the list.
     const rows = await sql`
-      SELECT 1 FROM auth_sessions
-      WHERE id = ${id} AND revoked_at IS NULL AND expires_at > now()
+      SELECT (a.email IS NOT NULL) AS allowed
+      FROM auth_sessions s
+      LEFT JOIN allowed_emails a ON a.email = s.user_email
+      WHERE s.id = ${id} AND s.revoked_at IS NULL AND s.expires_at > now()
       LIMIT 1
     `;
-    return rows.length > 0;
+    return rows[0] ? { allowed: rows[0].allowed === true } : null;
   },
 
   async revoke(id) {

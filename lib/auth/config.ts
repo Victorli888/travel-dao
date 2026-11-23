@@ -43,6 +43,11 @@ export function createAuthConfig(deps: AuthDeps): NextAuthConfig {
           if (!parsed.success) return null;
           const { email, code } = parsed.data;
           if (!(await deps.verifyOtp(email, code))) return null;
+          // The app is private: a correct code is not enough. Refused here,
+          // before the jwt callback runs, so no session row is created, and
+          // with the same generic failure as a wrong code. Checked after the
+          // code so the extra read reveals nothing to someone without one.
+          if (!(await deps.isEmailAllowed(email))) return null;
           return { id: email, email };
         },
       }),
@@ -65,7 +70,12 @@ export function createAuthConfig(deps: AuthDeps): NextAuthConfig {
         }
         // A token minted before sessions were server-side has no `sid`; it
         // is treated as revoked, which costs everyone one re-sign-in.
-        if (!token.sid || !(await deps.sessions.isActive(token.sid))) return null;
+        if (!token.sid) return null;
+        const status = await deps.sessions.status(token.sid);
+        if (!status) return null;
+        // Re-read every request, not frozen at sign-in: removal from the
+        // allow-list sends the user to /unauthorized on their next request.
+        token.isAllowed = status.allowed;
         return token;
       },
       async session({ session, token }) {

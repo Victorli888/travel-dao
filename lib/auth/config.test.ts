@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { createAuthConfig, EMAIL_OTP_PROVIDER, type AuthDeps } from "./config";
 import { SESSION_MAX_AGE_SECONDS, sessionCookie } from "./cookies";
 import type { SessionStore } from "./sessions";
+import { routeAccess } from "./route-access";
 
 /**
  * Runs real sign-ins through Auth.js with fake deps, and reads the cookies it
@@ -24,9 +25,14 @@ interface FakeSessions extends SessionStore {
   created: { email: string; provider: string }[];
 }
 
+/** Stands in for `allowed_emails`, shared by `isEmailAllowed` and `status`. */
+let allowList: Set<string>;
+
+/** Mirrors `neonSessionStore`: `status` LEFT JOINs the allow-list. */
 function fakeSessions(): FakeSessions {
   let n = 0;
   const live = new Set<string>();
+  const owner = new Map<string, string>();
   const created: { email: string; provider: string }[] = [];
   return {
     live,
@@ -35,10 +41,12 @@ function fakeSessions(): FakeSessions {
       created.push({ email, provider });
       const id = `sid-${++n}`;
       live.add(id);
+      owner.set(id, email);
       return id;
     },
-    async isActive(id) {
-      return live.has(id);
+    async status(id) {
+      if (!live.has(id)) return null;
+      return { allowed: allowList.has(owner.get(id)!) };
     },
     async revoke(id) {
       live.delete(id);
@@ -51,7 +59,7 @@ let sessions: FakeSessions;
 function build(secureCookies: boolean, over: Partial<AuthDeps> = {}) {
   return NextAuth(
     createAuthConfig({
-      isEmailAllowed: async () => true,
+      isEmailAllowed: async (email) => allowList.has(email),
       verifyOtp: async (_email, code) => code === "123456",
       sessions,
       secureCookies,
@@ -94,6 +102,7 @@ function sessionSetCookie(res: Response, secure: boolean): string | undefined {
 
 beforeEach(() => {
   sessions = fakeSessions();
+  allowList = new Set(["a@example.com", "mixed@example.com"]);
 });
 
 describe("session cookie", () => {
@@ -199,5 +208,47 @@ describe("server-side session", () => {
 
     expect(sessions.live.size).toBe(0);
     expect(sessionSetCookie(out, true)).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/i);
+  });
+});
+
+describe("allow-list", () => {
+  it("refuses a correct code for an address not on the list, and creates no session", async () => {
+    const verified: string[] = [];
+    const { handlers } = build(true, {
+      verifyOtp: async (email, code) => {
+        verified.push(email);
+        return code === "123456";
+      },
+    });
+    const res = await signInWithCode(handlers, "stranger@example.com", "123456");
+
+    expect(verified).toEqual(["stranger@example.com"]); // the code was spent
+    expect(sessionSetCookie(res, true)).toBeUndefined();
+    expect(sessions.created).toEqual([]);
+    // The same generic failure as a wrong code.
+    const wrong = await signInWithCode(handlers, "a@example.com", "000000");
+    expect(res.headers.get("location")).toBe(wrong.headers.get("location"));
+  });
+
+  it("re-reads the list on every request: removal and re-adding take effect at once", async () => {
+    const { handlers } = build(true);
+    const cookie = jar(await signInWithCode(handlers, "a@example.com", "123456"));
+    const read = async () =>
+      (
+        await handlers.GET(new NextRequest(`${ORIGIN}/api/auth/session`, { headers: { cookie } }))
+      ).json();
+
+    expect((await read())?.user?.isAllowed).toBe(true);
+
+    allowList.delete("a@example.com");
+    const removed = await read();
+    // Still signed in (so /unauthorized can say who they are), but not allowed.
+    expect(removed?.user?.email).toBe("a@example.com");
+    expect(removed?.user?.isAllowed).toBe(false);
+    expect(routeAccess("/plan", removed)).toBe("/unauthorized");
+    expect(routeAccess("/", removed)).toBe("allow");
+
+    allowList.add("a@example.com");
+    expect((await read())?.user?.isAllowed).toBe(true);
   });
 });
