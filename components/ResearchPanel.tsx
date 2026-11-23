@@ -1,0 +1,73 @@
+"use client";
+
+import Wordmark from "@/components/ui/Wordmark";
+import ErrorBanner from "@/components/ui/ErrorBanner";
+import ChatInput from "@/components/research/ChatInput";
+import ResearchProgress from "@/components/research/ResearchProgress";
+import SuccessCardView from "@/components/research/SuccessCardView";
+import { useResearch } from "@/hooks/useResearch";
+
+interface Props {
+  tripId: string;
+  /** Shown under the wordmark so the user knows which trip this saves into. */
+  tripName: string;
+}
+
+/**
+ * The app's only stateful research orchestrator: owns the request lifecycle,
+ * decides which view is on screen, and passes the saved activity to the
+ * success view. Every component below this one is presentational.
+ */
+export default function ResearchPanel({ tripId, tripName }: Props) {
+  const { state, submit, reset } = useResearch(tripId);
+
+  if (state.status === "success") {
+    return (
+      <SuccessCardView
+        activity={state.activity}
+        body={state.message}
+        tripId={tripId}
+        onAddAnother={reset}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-10">
+        <Badge />
+        <Wordmark
+          tagline={
+            <>
+              Describe any place you want to visit.
+              <br />
+              I&apos;ll research it and add it to{" "}
+              <span className="text-zinc-300">{tripName}</span>&apos;s activity
+              bank.
+            </>
+          }
+        />
+      </div>
+
+      {state.status === "loading" ? (
+        <ResearchProgress />
+      ) : (
+        <div className="space-y-2">
+          {state.status === "error" && <ErrorBanner message={state.error} />}
+          <ChatInput onSubmit={submit} />
+        </div>
+      )}
+    </>
+  );
+}
+
+function Badge() {
+  return (
+    <div className="text-center">
+      <div className="inline-flex items-center gap-2 bg-accent-bright/10 border border-accent-bright/20 text-accent-pale text-xs font-medium px-3 py-1 rounded-full mb-5">
+        <span className="w-1.5 h-1.5 rounded-full bg-accent-light animate-pulse" />
+        Powered by AI
+      </div>
+    </div>
+  );
+}

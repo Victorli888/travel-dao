@@ -16,9 +16,9 @@ Planner data lives in Neon Postgres.
   it. A day can be given a name; without one it shows its date.
 - The Activity Bank is a read-only dialog over every activity saved for the
   trip, with search that ignores accents.
-- Not built yet: adding an activity from the UI, placing one on a day, and
-  reordering a day. The data layer for all three exists in `lib/itinerary/`.
-  Until the UI does, the Activity Bank is empty.
+- Research a place from the trip page and save it to that trip’s Activity Bank.
+- Manage saved activities across your trips at `/activity-bank`.
+- Placing an activity on a day and reordering a day are pending.
 
 **Access control**
 - Google OAuth via Auth.js. Middleware allows public access to `/`, `/login`,
@@ -61,6 +61,7 @@ cp .env.example .env.local   # then fill in every value
 
 | Variable | What it is |
 |---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key for place research |
 | `DATABASE_URL` | Neon connection string |
 | `AUTH_SECRET` | Generate with `openssl rand -base64 32` |
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |

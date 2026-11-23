@@ -55,6 +55,7 @@ The Day Planner uses the Next.js 15 App Router.
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
 | `/activity-bank` | Manage saved activities across the signed-in user’s trips. |
 | `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
+| `/plan/[tripId]/add` | Research a place and save it to the owned trip through `POST /api/research`. |
 
 **The planner has no API routes and should not grow any.** `/plan`,
 `/plan/[tripId]` and `/activity-bank` use Server Components that call
