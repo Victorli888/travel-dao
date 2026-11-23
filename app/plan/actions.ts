@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/api/errors";
 import { requireUserEmail } from "@/lib/auth/session";
 import { createTrip } from "@/lib/itinerary";
-import { CreateDatedTripSchema, parseInput } from "@/lib/itinerary/schemas";
+import { CreateDatedTripSchema } from "@/lib/itinerary/schemas";
 
 /**
  * There is no `/api/trips` and should not be one — `lib/itinerary/index.ts`
@@ -26,7 +26,17 @@ import { CreateDatedTripSchema, parseInput } from "@/lib/itinerary/schemas";
  */
 export interface NewTripState {
   error: string | null;
+  /**
+   * The input the error is about, so the form can mark it `aria-invalid` and
+   * move focus there. `null` when it is about no one field (the allow-list,
+   * or something unexpected).
+   */
+  field: NewTripField | null;
 }
+
+export type NewTripField = "name" | "startDate" | "endDate";
+
+const FIELDS: readonly string[] = ["name", "startDate", "endDate"];
 
 /**
  * Creates the trip and opens it. **One write**, because the Neon HTTP driver
@@ -44,19 +54,29 @@ export async function createTripAction(
     const email = await requireUserEmail();
     // Coerced to strings first: a missing field is `null`, and Zod would
     // report that as a type error rather than "Give the trip a name."
-    const draft = parseInput(CreateDatedTripSchema, {
+    // `safeParse` rather than `parseInput`: the same first-issue message,
+    // but the issue's path survives, which is what names the field.
+    const parsed = CreateDatedTripSchema.safeParse({
       name: String(formData.get("name") ?? ""),
       startDate: String(formData.get("startDate") ?? ""),
       endDate: String(formData.get("endDate") ?? ""),
     });
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const key = String(issue?.path[0] ?? "");
+      return {
+        error: issue?.message ?? "Invalid input",
+        field: FIELDS.includes(key) ? (key as NewTripField) : null,
+      };
+    }
 
-    tripId = (await createTrip(email, draft)).id;
+    tripId = (await createTrip(email, parsed.data)).id;
   } catch (error) {
-    // `ValidationError` from the schema, and the allow-list `NOT_ALLOWED`
-    // that `createTrip` already translates out of `trips_user_email_fkey`.
-    if (error instanceof AppError) return { error: error.message };
+    // The allow-list `NOT_ALLOWED` that `createTrip` already translates out
+    // of `trips_user_email_fkey`, and any other `AppError` on the way.
+    if (error instanceof AppError) return { error: error.message, field: null };
     console.error("Unhandled createTripAction error:", error);
-    return { error: "Something went wrong creating the trip." };
+    return { error: "Something went wrong creating the trip.", field: null };
   }
 
   // Outside the `try` on purpose: `redirect` signals by throwing, and a

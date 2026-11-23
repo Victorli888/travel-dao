@@ -61,3 +61,23 @@ export function formatDateRange(
   if (sameYear) return `${part(start, DAY_MONTH)} – ${part(end, DAY_MONTH_YEAR)}`;
   return `${part(start, DAY_MONTH_YEAR)} – ${part(end, DAY_MONTH_YEAR)}`;
 }
+
+/** "April 2027" — a calendar's month heading. */
+export function formatMonthYear(date: string): string {
+  return part(date, { month: "long", year: "numeric" });
+}
+
+/** "Saturday 3 April 2027" — a calendar cell's accessible name. */
+export function formatSpokenDate(date: string): string {
+  return part(date, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** "1 day", "12 days". */
+export function formatDayCount(days: number): string {
+  return `${days} ${days === 1 ? "day" : "days"}`;
+}
