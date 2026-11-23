@@ -12,6 +12,8 @@ interface Props {
   /** Shaped on the server — the view never touches an `Activity`. */
   entries: BankEntry[];
   counts: BankCounts;
+  /** Where “Add activity” goes — trip-scoped research. */
+  addHref: string;
 }
 
 /**
@@ -27,7 +29,7 @@ interface Props {
  * `bank.ts` is imported by path, not through `@/lib/itinerary` — that barrel
  * carries `server-only` and would fail here at runtime.
  */
-export default function ActivityBank({ entries, counts }: Props) {
+export default function ActivityBank({ entries, counts, addHref }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -51,6 +53,7 @@ export default function ActivityBank({ entries, counts }: Props) {
       onQueryChange={setQuery}
       entries={filterBankEntries(entries, query)}
       counts={counts}
+      addHref={addHref}
     />
   );
 }

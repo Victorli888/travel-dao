@@ -86,7 +86,19 @@ export default async function TripPage({ params }: Props) {
               saved {counts.saved === 1 ? "activity" : "activities"} planned
             </p>
           </div>
-          <ActivityBank entries={entries} counts={counts} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/plan/${trip.id}/add`}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-tao px-4 py-2 text-xs font-medium text-tao transition-colors hover:bg-tao-wash"
+            >
+              Add activity
+            </Link>
+            <ActivityBank
+              entries={entries}
+              counts={counts}
+              addHref={`/plan/${trip.id}/add`}
+            />
+          </div>
         </header>
       </div>
 
@@ -100,8 +112,15 @@ export default async function TripPage({ params }: Props) {
       </section>
 
       <div className={container}>
-        <p className="m-0 max-w-[54ch] py-12 text-[15px] leading-relaxed text-ink-subtle">
-          Plan It lands here next.
+        <p className="m-0 max-w-[54ch] py-12 text-[15px] leading-relaxed text-ink-muted">
+          Plan It lands here next. For now,{" "}
+          <Link
+            href={`/plan/${trip.id}/add`}
+            className="font-medium text-tao underline-offset-4 transition-colors hover:text-ember"
+          >
+            research a place
+          </Link>{" "}
+          and save it to the activity bank.
         </p>
       </div>
     </main>

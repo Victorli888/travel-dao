@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { RefObject } from "react";
 import { buttonStyles } from "@/components/ui/Button";
 import { XIcon } from "@/components/ui/icons";
@@ -19,6 +20,8 @@ interface Props {
   entries: BankEntry[];
   /** Unfiltered totals: the meta line describes the bank, not the search. */
   counts: BankCounts;
+  /** Trip-scoped research entry point. */
+  addHref: string;
 }
 
 /**
@@ -46,6 +49,7 @@ export default function ActivityBankView({
   onQueryChange,
   entries,
   counts,
+  addHref,
 }: Props) {
   const empty = counts.saved === 0;
 
@@ -107,7 +111,14 @@ export default function ActivityBankView({
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {empty ? (
             <p className="m-0 text-[15px] leading-relaxed text-ink-muted">
-              Nothing saved to this trip yet.
+              Nothing saved to this trip yet.{" "}
+              <Link
+                href={addHref}
+                className="font-medium text-tao underline-offset-4 transition-colors hover:text-ember"
+              >
+                Research a place
+              </Link>{" "}
+              to add one.
             </p>
           ) : entries.length === 0 ? (
             <p className="m-0 text-[15px] leading-relaxed text-ink-muted">
@@ -145,9 +156,12 @@ export default function ActivityBankView({
         {/* In-control separator, so it stays square — `.rule-fade` is for
             freestanding rules. */}
         <div className="flex items-center justify-between gap-4 border-t border-rule px-6 py-4">
-          <span className="text-[12px] text-ink-subtle">
-            Placing an activity on a day lands next.
-          </span>
+          <Link
+            href={addHref}
+            className="text-[12px] font-medium text-tao underline-offset-4 transition-colors hover:text-ember"
+          >
+            + Add activity
+          </Link>
           <button
             type="button"
             onClick={onDismiss}
