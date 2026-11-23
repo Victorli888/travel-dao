@@ -54,7 +54,7 @@ The Day Planner uses the Next.js 15 App Router.
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. **The one public page**: `lib/auth/route-access.ts` matches it exactly — a prefix match on `/` would make every route public. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
 | `/activity-bank` | Manage saved activities across the signed-in user’s trips. |
-| `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
+| `/plan/[tripId]` | One trip: a card per day that opens the day's plan in a `<dialog>` (stops in order, each expandable), plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
 
 **The planner has no API routes and should not grow any.** `/plan`,
 `/plan/[tripId]` and `/activity-bank` use Server Components that call
@@ -211,10 +211,10 @@ in a hook or in `lib/`, with the containers below owning local interaction state
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app/` | Routes and Server Actions. Server Components call the data layer directly. |
 | `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `icons`.                            |
-| `components/planner/`          | Presentational views for `/plan`. Two containers own local interaction state: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle) and `ActivityBank` (a draft search string and two refs). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
+| `components/planner/`          | Presentational views for `/plan`. Three containers own local interaction state: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle), `ActivityBank` (a draft search string and two refs) and `DayPlanner` (which day the day dialog shows and which of its stops are expanded). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
-| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
+| `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank`/`day-plan` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
 | `lib/auth/`                    | `allowlist.ts` (is this email in `allowed_emails`) and `session.ts` (`requireUserEmail`, the signed-in email every `lib/itinerary/` call needs first). |
 | `lib/api/` | Server environment validation and application errors. |
 | `types/`                       | Ambient module augmentation (`next-auth.d.ts`).                                                                                                         |
@@ -226,7 +226,7 @@ and `pg-errors` are deep-imported by convention; `bank.ts` must be, because
 `filterBankEntries` runs in the browser on every keystroke. A barrel import of
 it compiles and then fails at runtime.
 
-**The Activity Bank keeps no React `open` flag.** `ActivityBank` calls
+**The Activity Bank and the day dialog keep no React `open` flag.** `ActivityBank` calls
 `showModal()` on a ref and lets the native `<dialog>` own its openness, so Esc
 and a React state variable cannot disagree; the dialog's `close` event is the
 one place every dismissal lands. That is also why the container stays inside

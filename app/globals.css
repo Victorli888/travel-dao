@@ -47,9 +47,14 @@
    */
   --animate-route: route-dash 2.4s linear infinite;
   --animate-drift: drift 6s ease-in-out infinite;
+  /* The day dialog's entrance. Also only behind `motion-safe:`. */
+  --animate-sheet-in: sheet-in 200ms ease-out;
 
   @keyframes route-dash {
     to { stroke-dashoffset: -24; }
+  }
+  @keyframes sheet-in {
+    from { opacity: 0; transform: translateY(12px); }
   }
   @keyframes drift {
     0%, 100% { transform: translate(0, 0); }

@@ -41,3 +41,12 @@ export function GoogleIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/** Points down; rotate it for the other directions. */
+export function ChevronIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}

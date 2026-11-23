@@ -39,8 +39,13 @@ dropped) no longer exists locally or on `origin`.
   CTAs link to `/plan`, so a signed-out visitor is redirected to `/login`.
 - **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
   Frame 0.
-- **`/plan/[tripId]`**: one column per day, listing the activities placed on
-  it. Days are generated on first view.
+- **`/plan/[tripId]`**: one card per day, listing the activities placed on
+  it. Days are generated on first view. Restyled to the landing on 2026-11-22
+  (`feat/plan-day-modal`): clicking a day opens its plan in a native
+  `<dialog>` (full-screen below `sm`), with stops in order, each expandable to
+  its recorded details, and next/previous day. The schema has no times, so a
+  stop shows its duration and opening hours when recorded. Read model:
+  `lib/itinerary/day-plan.ts`.
 - **The Activity Bank** (wireframe Frame 1): a read-only dialog over every
   activity saved for the trip, with search that ignores accents. It brought the
   `activities.area` column (the neighbourhood), migration
