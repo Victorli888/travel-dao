@@ -6,6 +6,7 @@ import {
   toBankEntries,
   type BankEntry,
 } from "./bank";
+import { filterSavedActivities, savedBankOptions } from "./saved-bank";
 import type { Activity } from "./types";
 
 const CREATED = new Date("2026-08-01T00:00:00Z");
@@ -28,6 +29,8 @@ function activity(
     hoursOperation: null,
     source: "manual",
     sourceMetadata: null,
+    country: null,
+    activityType: null,
     durationMinutes: null,
     priorityScore: null,
     createdAt: CREATED,
@@ -168,5 +171,27 @@ describe("filterBankEntries", () => {
 
   it("returns nothing when nothing matches", () => {
     expect(filterBankEntries(ENTRIES, "osaka")).toEqual([]);
+  });
+});
+
+describe("saved activity filters", () => {
+  const activities = [
+    activity("a", "Musée des Arts", { country: "France", activityType: "Museum" }),
+    activity("b", "Musée des Beaux-Arts", { country: " FRANCE ", activityType: "museum", tripId: "trip-2" }),
+    activity("c", "Old town"),
+    activity("d", "Musée d’Art", { country: "Belgium", activityType: "Museum" }),
+  ];
+  const empty = { search: "", country: "", activityType: "", trip: "" };
+
+  it("offers distinct labels from saved records", () => {
+    expect(savedBankOptions(activities, "country")).toEqual(["Belgium", "France"]);
+    expect(savedBankOptions(activities, "activityType")).toEqual(["Museum"]);
+  });
+
+  it("includes unlabelled records by default and intersects the active filters", () => {
+    expect(filterSavedActivities(activities, empty)).toEqual(activities);
+    expect(filterSavedActivities(activities, {
+      search: "musee", country: "france", activityType: "Museum", trip: "trip-2",
+    })).toEqual([activities[1]]);
   });
 });

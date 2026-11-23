@@ -4,6 +4,7 @@ import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { NotFoundError } from "@/lib/api/errors";
 import { getDb } from "@/lib/db";
 import { activities } from "@/lib/db/schema";
+import { ACTIVITY_BANK_LABELS, activityLabelPatch } from "./activity-labels";
 import { toActivity } from "./shape";
 import {
   ActivityDraftSchema,
@@ -11,6 +12,7 @@ import {
   UuidSchema,
   parseInput,
 } from "./schemas";
+import { withPgErrors } from "./pg-errors";
 import { getTrip } from "./trips";
 import type { Activity } from "./types";
 
@@ -53,6 +55,16 @@ export async function listActivities(
   return rows.map(toActivity);
 }
 
+/** All saved activities for one owner, including those without placements. */
+export async function listSavedActivities(userEmail: string): Promise<Activity[]> {
+  const rows = await getDb()
+    .select()
+    .from(activities)
+    .where(eq(activities.userEmail, userEmail))
+    .orderBy(...byPriority, asc(activities.id));
+  return rows.map(toActivity);
+}
+
 export async function getActivity(
   userEmail: string,
   activityId: string,
@@ -79,25 +91,32 @@ export async function addActivity(
   const trip = await getTrip(userEmail, tripId);
   if (!trip) throw new NotFoundError(TRIP_NOT_FOUND);
 
-  const [row] = await getDb()
-    .insert(activities)
-    .values({
-      userEmail,
-      tripId: trip.id,
-      name: draft.name,
-      summary: draft.summary,
-      address: draft.address ?? null,
-      area: draft.area ?? null,
-      // `numeric` is a string on the wire in both directions.
-      lat: draft.lat == null ? null : String(draft.lat),
-      lng: draft.lng == null ? null : String(draft.lng),
-      hoursOperation: draft.hoursOperation ?? null,
-      sourceMetadata: draft.sourceMetadata ?? null,
-      durationMinutes: draft.durationMinutes ?? null,
-      priorityScore: draft.priorityScore ?? null,
-      ...(draft.source ? { source: draft.source } : {}),
-    })
-    .returning();
+  const labels = activityLabelPatch(draft);
+  const sourceMetadata = draft.sourceMetadata ?? null;
+  const [row] = await withPgErrors(
+    () => getDb()
+        .insert(activities)
+        .values({
+          userEmail,
+          tripId: trip.id,
+          name: draft.name,
+          summary: draft.summary,
+          address: draft.address ?? null,
+          area: draft.area ?? null,
+          // `numeric` is a string on the wire in both directions.
+          lat: draft.lat == null ? null : String(draft.lat),
+          lng: draft.lng == null ? null : String(draft.lng),
+          hoursOperation: draft.hoursOperation ?? null,
+          sourceMetadata: Object.keys(labels).length
+            ? { [ACTIVITY_BANK_LABELS]: labels, sourceMetadata }
+            : sourceMetadata,
+          durationMinutes: draft.durationMinutes ?? null,
+          priorityScore: draft.priorityScore ?? null,
+          ...(draft.source ? { source: draft.source } : {}),
+        })
+        .returning(),
+    { foreignKey: "That trip or account no longer exists." },
+  );
 
   return toActivity(row);
 }
@@ -125,7 +144,28 @@ export async function updateActivity(
     set.hoursOperation = patch.hoursOperation ?? null;
   }
   if ("source" in patch) set.source = patch.source;
-  if ("sourceMetadata" in patch) set.sourceMetadata = patch.sourceMetadata;
+  const labels = activityLabelPatch(patch);
+  const editsLabels = Object.keys(labels).length > 0;
+  if (editsLabels || "sourceMetadata" in patch) {
+    // Derive both parts from the row at update time so concurrent changes
+    // to provider metadata or to the other label do not get overwritten.
+    const metadata = activities.sourceMetadata;
+    const hasLabels = sql`jsonb_typeof(${metadata}->${ACTIVITY_BANK_LABELS}::text) = 'object'
+      and ${metadata} ? 'sourceMetadata'`;
+    const savedLabels = sql`case when ${hasLabels}
+      then ${metadata}->${ACTIVITY_BANK_LABELS}::text else '{}'::jsonb end`;
+    const sourceMetadata = "sourceMetadata" in patch
+      ? sql`${JSON.stringify(patch.sourceMetadata ?? null)}::jsonb`
+      : sql`case when ${hasLabels} then ${metadata}->'sourceMetadata' else ${metadata} end`;
+    const envelope = sql`jsonb_build_object(
+      ${ACTIVITY_BANK_LABELS}::text,
+      (${savedLabels}) || ${JSON.stringify(labels)}::jsonb,
+      'sourceMetadata', ${sourceMetadata}
+    )`;
+    set.sourceMetadata = editsLabels
+      ? envelope
+      : sql`case when ${hasLabels} then ${envelope} else nullif(${sourceMetadata}, 'null'::jsonb) end`;
+  }
   if ("durationMinutes" in patch) {
     set.durationMinutes = patch.durationMinutes ?? null;
   }

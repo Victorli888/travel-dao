@@ -2,6 +2,7 @@
  * Flat join rows → nested document. Pure: no database import, no
  * `server-only`, so the grouping rules are unit-testable.
  */
+import { readActivityMetadata } from "./activity-labels";
 import type {
   Activity,
   ActivityRow,
@@ -26,9 +27,14 @@ function toNumber(value: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Row → DTO. The two numeric columns are the only difference. */
+/** Row → DTO, including labels from the existing source metadata column. */
 export function toActivity(row: ActivityRow): Activity {
-  return { ...row, lat: toNumber(row.lat), lng: toNumber(row.lng) };
+  return {
+    ...row,
+    ...readActivityMetadata(row.sourceMetadata),
+    lat: toNumber(row.lat),
+    lng: toNumber(row.lng),
+  };
 }
 
 /**

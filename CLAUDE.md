@@ -53,12 +53,13 @@ The Day Planner uses the Next.js 15 App Router.
 | --- | --- |
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. **The one public page**: `lib/auth/route-access.ts` matches it exactly — a prefix match on `/` would make every route public. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
+| `/activity-bank` | Manage saved activities across the signed-in user’s trips. |
 | `/plan/[tripId]` | One trip: a column per day, plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
 
-**The planner has no API routes and should not grow any.** `/plan` and
-`/plan/[tripId]` are Server Components that call `lib/itinerary/` directly,
-and the one mutation is the Server Action in `app/plan/actions.ts`. See the
-note in `lib/itinerary/index.ts`.
+**The planner has no API routes and should not grow any.** `/plan`,
+`/plan/[tripId]` and `/activity-bank` use Server Components that call
+`lib/itinerary/` directly. Writes use the feature’s Server Actions. See
+the note in `lib/itinerary/index.ts`.
 
 **Creating a trip and generating its days are two requests, on purpose.**
 `createTripAction` performs exactly one write and redirects;
@@ -138,6 +139,9 @@ two rows. That is a product call, reversible with a one-line migration.
 - `activities.priority_score` is an integer 1-5 (`CHECK` enforced), and
 **NULL means not yet prioritised, not lowest**. It replaces the 0-10
 `user_activity_ratings.rating`; sort with `NULLS LAST`.
+- **Activity Bank country and type live in `activities.source_metadata`.**
+  Bank edits preserve provider metadata, which the data layer exposes separately.
+  Older rows use saved metadata labels when present and remain visible without labels.
 - **`activities.area` is the neighbourhood, and it is not a slice of
 `address`.** "Pontochō", not "Kamogawa Park, Nakagyō-ku, Kyoto 604-8006". It
 is the Activity Bank's second line, and NULL means *not recorded* — the row

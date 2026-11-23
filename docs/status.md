@@ -55,6 +55,14 @@ dropped) no longer exists locally or on `origin`.
 - Removed Notion page generation from the app, including its UI and API route.
   Existing records require no migration.
 
+## In review
+
+- **Standalone Activity Bank** at `/activity-bank`, linked from the Day Planner.
+  It manages existing and new activities across the signed-in user's trips.
+  Country and type labels use the existing activity metadata column, so the
+  bank works with the current database schema, including databases that
+  already have the email OTP migration.
+
 ## After merging to `main`
 
 The 2026-11-21 merge goes ahead knowingly with these open. Do them first, in
