@@ -15,7 +15,7 @@ export default async function UnauthorizedPage() {
   const name = session.user?.name ?? "";
 
   return (
-    <PageShell width="sm">
+    <PageShell>
       <div className="mb-10">
         <Wordmark />
       </div>

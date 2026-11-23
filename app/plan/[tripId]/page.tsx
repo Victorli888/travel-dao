@@ -120,14 +120,7 @@ export default async function TripPage({ params }: Props) {
         </section>
 
         <p className="m-0 max-w-[54ch] pb-16 text-[15px] leading-relaxed text-ink-muted">
-          Plan It lands here next. For now you can research a place and{" "}
-          <Link
-            href="/write-to-notion"
-            className="font-medium text-tao underline-offset-4 transition-colors hover:text-ember"
-          >
-            file it in Notion
-          </Link>
-          .
+          Plan It lands here next.
         </p>
       </div>
     </main>

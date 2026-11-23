@@ -2,13 +2,11 @@ import { cn } from "@/lib/cn";
 
 interface Props {
   children: React.ReactNode;
-  /** Renders the purple gradient hairline across the top edge. */
-  accentBar?: boolean;
   className?: string;
 }
 
 /** The app's single surface treatment: rounded, hairline-bordered panel. */
-export default function Card({ children, accentBar = false, className }: Props) {
+export default function Card({ children, className }: Props) {
   return (
     <div
       className={cn(
@@ -16,9 +14,6 @@ export default function Card({ children, accentBar = false, className }: Props) 
         className
       )}
     >
-      {accentBar && (
-        <div className="h-0.5 bg-gradient-to-r from-accent via-violet-400 to-transparent" />
-      )}
       {children}
     </div>
   );

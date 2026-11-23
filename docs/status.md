@@ -13,7 +13,7 @@ Change the date when you do.
 
 | Branch | State |
 | --- | --- |
-| `main` | The Notion research app, plus auth (PR #3) and the layered-architecture refactor. |
+| `main` | The Day Planner, auth, and the original Notion research app. |
 | `feat/itinerary-planning` | **Active, being merged.** 30 commits ahead of `main`, 0 behind, all pushed. The PR to `main` is "Planner, part 1". Merging before you can add an activity from the UI was decided on 2026-11-21; see [After merging to `main`](#after-merging-to-main). |
 | `refactor/layered-architecture`, `feat/auth-login`, `docs/consolidate-agent-docs` | Already merged (the last via PR #4, into `feat/itinerary-planning`). Safe to delete. |
 
@@ -31,9 +31,9 @@ dropped) no longer exists locally or on `origin`.
   reordering, naming a day. Every write is a single SQL statement. Tests:
   `shape`, `schemas`, `format` and `pg-errors` are pure unit tests, and
   `crud.test.ts` is the live database suite.
-- **Landing page at `/`.** The Notion tool moved to `/write-to-notion`.
+- **Landing page at `/`.** Introduces the Day Planner.
   Redesigned on 2026-11-22 (`feat/landing-page-redesign`): hero with a route
-  illustration, benefits, three steps, the two tools, a closing call to
+  illustration, benefits, three steps, planner features, and a closing call to
   action. Still wholly static. **`/` is public** (exact match in
   `lib/auth/route-access.ts`); every other route stays behind sign-in. Its
   CTAs link to `/plan`, so a signed-out visitor is redirected to `/login`.
@@ -50,6 +50,11 @@ dropped) no longer exists locally or on `origin`.
   `docs/` holds only feature-work context, and `.github/pr-template.md` is
   the PR description format (PR #4).
 
+## In this worktree
+
+- Removed Notion page generation from the app, including its UI and API route.
+  Existing records require no migration.
+
 ## After merging to `main`
 
 The 2026-11-21 merge goes ahead knowingly with these open. Do them first, in
@@ -65,7 +70,7 @@ this order:
      printing an error, so if there's no success line, replay the migration
      through `psql`.
    - In a browser: sign in, create a trip, open it, open the Activity Bank, and
-     check that `/write-to-notion` still works at its new path.
+     verify its search and empty state.
 2. **Know the planner is incomplete on `main`.** You can create trips and see
    their days, but nothing in the UI can add an activity yet, so the Activity
    Bank is always empty. "Next, in order" items 1 and 2 below fix that.
@@ -84,25 +89,9 @@ this order:
 
 | Decision | Status | Where it's written up |
 | --- | --- | --- |
-| **Step 0**: should the research agent save activities to Postgres (A, recommended) or keep writing only to Notion (B)? | Open. Not blocking yet, but it blocks rejection memory. | [Step 0](#step-0-where-the-research-agent-saves) below |
-| **Rejection memory**: remember activities the user turned down so they aren't suggested again. | Open. Needs Step 0 = A first. | `CLAUDE.md` → Data model ("Nothing records rejection") |
-| **Activity identity key**: the same real place regenerated becomes a second row. | Open. Decide alongside Step 0. | [Activity identity key](#activity-identity-key) below |
+| **Rejection memory**: remember activities the user turned down so they aren't suggested again. | Open. | `CLAUDE.md` → Data model ("Nothing records rejection") |
+| **Activity identity key**: the same real place regenerated becomes a second row. | Open. | [Activity identity key](#activity-identity-key) below |
 | **Composite FK** so a placement can't pair a day and an activity from different trips. | Open. The data layer enforces it for now. | `CLAUDE.md` → Data model; `sql/validate-itinerary.sql` check 9 |
-
-### Step 0: where the research agent saves
-
-Today the agent's system prompt says "Notion is the source of truth."
-`runResearchAgent` returns prose and `parseNotionPath` scrapes a URL out of
-it. Nothing lands in Postgres, but the planner needs rows in `activities`.
-
-| Option | What it means | Cost |
-| --- | --- | --- |
-| **A: Postgres primary** | The agent gains a structured-output step (a tool call returning JSON in the activity shape) and the route inserts it into `activities`. Notion becomes a side effect. | Prompt rewrite, a new zod schema, a write path in the route. |
-| **B: Postgres secondary** | Postgres holds only what the user adds by hand. The agent keeps writing prose to Notion. | Cheap now. Blocks rejection memory: the agent never produces a row to score. |
-
-**Recommendation: A.** Rejection memory ("once an activity is scored poorly,
-don't generate it again") is impossible under B, and re-adding a ratings table
-only makes sense once activities are real rows with stable identity.
 
 ### Activity identity key
 
@@ -115,5 +104,3 @@ touch the itinerary tables.
 ## Loose ends
 
 - No React component tests. Views are verified by browser only.
-- Deployment is unproven (the MCP subprocess vs serverless). See the README
-  "Known gaps".

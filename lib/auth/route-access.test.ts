@@ -14,7 +14,7 @@ describe("routeAccess", () => {
     expect(routeAccess("/", notAllowed)).toBe("allow");
   });
 
-  it.each(["/plan", "/plan/abc-123", "/write-to-notion", "/api/research"])(
+  it.each(["/plan", "/plan/abc-123", "/other-page"])(
     "sends a signed-out visitor on %s to /login",
     (path) => {
       expect(routeAccess(path, null)).toBe("/login");
@@ -41,6 +41,6 @@ describe("isPublicPath", () => {
   it("matches / exactly, not as a prefix", () => {
     expect(isPublicPath("/")).toBe(true);
     expect(isPublicPath("/plan")).toBe(false);
-    expect(isPublicPath("/write-to-notion")).toBe(false);
+    expect(isPublicPath("/other-page")).toBe(false);
   });
 });
