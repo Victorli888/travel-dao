@@ -13,7 +13,7 @@ export const eyebrow =
 
 /** Section headings (`h2`) share one size so the hierarchy reads at a glance. */
 export const sectionHeading =
-  "m-0 mt-3 text-[clamp(1.75rem,3.6vw,2.5rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-ink";
+  "m-0 mt-3 font-display text-[clamp(1.75rem,3.6vw,2.5rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-ink";
 
 /** The landing's one content width. Sections that bleed full-width wrap it. */
 export const container = "mx-auto w-full max-w-[72rem] px-5 sm:px-8";

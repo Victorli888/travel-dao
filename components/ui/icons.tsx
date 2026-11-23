@@ -41,3 +41,22 @@ export function GoogleIcon({ size = 18, className }: IconProps) {
     </svg>
   );
 }
+
+/** Points down; rotate it for the other directions. */
+export function ChevronIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+/** A map pin, for an area. Decorative — the text beside it carries the meaning. */
+export function PinIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke} strokeWidth={2.25}>
+      <path d="M12 21s-7-6.2-7-11.5a7 7 0 1 1 14 0C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  );
+}

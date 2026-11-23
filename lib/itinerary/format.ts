@@ -81,3 +81,13 @@ export function formatSpokenDate(date: string): string {
 export function formatDayCount(days: number): string {
   return `${days} ${days === 1 ? "day" : "days"}`;
 }
+
+/** "Tuesday" — a day card's kicker. */
+export function formatWeekday(date: string): string {
+  return part(date, { weekday: "long" });
+}
+
+/** "14 April" — an unnamed day card's heading; the year is the trip's. */
+export function formatDayMonth(date: string): string {
+  return part(date, { day: "numeric", month: "long" });
+}
