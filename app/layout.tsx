@@ -5,8 +5,8 @@ import "./globals.css";
 
 /**
  * The Day Planner design system is Inter throughout. Exposed as a variable so
- * `font-tao` reaches only the pages on the light palette; the research flow
- * keeps the system stack.
+ * `font-tao` reaches only the pages on the light palette; the auth pages
+ * keep the system stack.
  */
 const inter = Inter({
   subsets: ["latin"],
@@ -16,7 +16,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Dao",
-  description: "Plan your days, and save the places you find to your activity bank",
+  description: "Plan your trips day by day and keep track of the places you want to visit.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

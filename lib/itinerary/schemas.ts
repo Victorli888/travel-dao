@@ -121,12 +121,13 @@ export const UpdateTripSchema = z
 export type UpdateTripInput = z.infer<typeof UpdateTripSchema>;
 
 /**
- * One schema, two producers: the "add a place" form, and the research agent
- * once it persists. `summary` is required — the column is `NOT NULL`.
+ * `summary` is required because the column is `NOT NULL`.
  */
 export const ActivityDraftSchema = z.object({
   name: ActivityName,
   summary: ActivitySummary,
+  country: z.string().trim().min(1).max(100).nullable().optional(),
+  activityType: z.string().trim().min(1).max(100).nullable().optional(),
   address: z.string().trim().max(500).nullable().optional(),
   /** The neighbourhood, not a slice of `address`. 200 is this file's cap. */
   area: z.string().trim().max(200).nullable().optional(),
@@ -135,7 +136,7 @@ export const ActivityDraftSchema = z.object({
   hoursOperation: z.string().trim().max(500).nullable().optional(),
   source: z.string().trim().min(1).max(50).optional(),
   sourceMetadata: z.unknown().optional(),
-  durationMinutes: z.number().int().positive().nullable().optional(),
+  durationMinutes: z.number().int().positive().max(2147483647).nullable().optional(),
   priorityScore: PriorityScoreSchema.optional(),
 });
 
@@ -172,7 +173,7 @@ export const PositionSchema = z.number().int().min(1).nullable();
 
 /**
  * Throws `ValidationError` (400) carrying the first issue's message, so no
- * caller branches on a status. Mirrors `parseResearchRequest`.
+ * caller branches on a status.
  */
 export function parseInput<T>(
   schema: z.ZodType<T>,

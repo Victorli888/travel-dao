@@ -150,3 +150,22 @@ describe("toActivity", () => {
     expect(parsed.lng).toBeNull();
   });
 });
+
+describe("activity labels", () => {
+  it("uses existing research labels and preserves provider metadata", () => {
+    const sourceMetadata = { country: " Japan ", category: "Temple", query: "Kyoto" };
+    expect(toActivity(activity("a", "Temple", { sourceMetadata }))).toMatchObject({
+      country: "Japan",
+      activityType: "Temple",
+      sourceMetadata,
+    });
+  });
+
+  it("honours a cleared type without losing the original category", () => {
+    const sourceMetadata = { country: "Japan", category: "Temple" };
+    const row = activity("a", "Temple", {
+      sourceMetadata: { travelTaoActivityBankV1: { activityType: null }, sourceMetadata },
+    });
+    expect(toActivity(row)).toMatchObject({ country: "Japan", activityType: null, sourceMetadata });
+  });
+});

@@ -27,6 +27,7 @@ vi.mock("@/lib/research/agent", () => ({
 }));
 
 vi.mock("@/lib/itinerary", () => ({
+  getTrip: vi.fn(async () => ({ id: TRIP_ID })),
   addActivity: vi.fn(async () => ({
     id: "22222222-2222-4222-8222-222222222222",
     name: "Tokyo Tower",
@@ -37,7 +38,7 @@ vi.mock("@/lib/itinerary", () => ({
 
 import { POST } from "./route";
 import { requireUserEmail } from "@/lib/auth/session";
-import { addActivity } from "@/lib/itinerary";
+import { addActivity, getTrip } from "@/lib/itinerary";
 import { runResearchAgent } from "@/lib/research/agent";
 
 function post(body: string) {
@@ -86,6 +87,17 @@ describe("POST /api/research", () => {
     const json = await response.json();
     expect(json.success).toBe(false);
     expect(json.error).toBeTruthy();
+    expect(runResearchAgent).not.toHaveBeenCalled();
+    expect(addActivity).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing or unowned trip before calling the agent", async () => {
+    vi.mocked(getTrip).mockResolvedValueOnce(null);
+    const response = await POST(
+      post(JSON.stringify({ message: "Tokyo Tower", tripId: TRIP_ID })),
+    );
+    expect(response.status).toBe(404);
+    expect(getTrip).toHaveBeenCalledWith("tester@example.com", TRIP_ID);
     expect(runResearchAgent).not.toHaveBeenCalled();
     expect(addActivity).not.toHaveBeenCalled();
   });

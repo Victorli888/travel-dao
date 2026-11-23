@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button, { buttonStyles } from "@/components/ui/Button";
-import { CheckIcon } from "@/components/ui/icons";
 import type { ResearchActivity } from "@/lib/types";
 
 interface Props {
@@ -20,11 +19,11 @@ export default function SuccessCardView({
 }: Props) {
   return (
     <div className="space-y-3">
-      <Card accentBar>
+      <Card>
         <div className="px-7 py-7">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center flex-shrink-0">
-              <CheckIcon className="text-emerald-400" />
+              <span aria-hidden="true" className="text-emerald-400">✓</span>
             </div>
             <p className="text-sm font-semibold text-white">
               Saved to activity bank
@@ -50,11 +49,11 @@ export default function SuccessCardView({
       <div className="flex flex-col gap-2 sm:flex-row">
         <Link
           href={`/plan/${tripId}`}
-          className={buttonStyles({ variant: "primary", size: "block" })}
+          className={buttonStyles({ variant: "primary" })}
         >
           Back to trip
         </Link>
-        <Button variant="ghost" size="block" fullWidth onClick={onAddAnother}>
+        <Button variant="quiet" onClick={onAddAnother}>
           Add another place
         </Button>
       </div>

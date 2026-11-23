@@ -2,7 +2,6 @@ import { z } from "zod";
 import { ConfigError } from "./errors";
 
 const EnvSchema = z.object({
-  ANTHROPIC_API_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
 });
 

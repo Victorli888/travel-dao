@@ -13,12 +13,16 @@ Change the date when you do.
 
 | Branch | State |
 | --- | --- |
-| `main` | Day Planner part 1 + redesigned landing + Notion research (legacy). |
-| `feat/research-to-activity-bank` | **Active.** Refactors research so Claude submits a structured activity and the route inserts it into the trip's activity bank. Drops Notion MCP. |
+| `main` | The Day Planner, auth, and the original Notion research app. |
+| `feat/itinerary-planning` | **Active, being merged.** 30 commits ahead of `main`, 0 behind, all pushed. The PR to `main` is "Planner, part 1". Merging before you can add an activity from the UI was decided on 2026-11-21; see [After merging to `main`](#after-merging-to-main). |
+| `refactor/layered-architecture`, `feat/auth-login`, `docs/consolidate-agent-docs` | Already merged (the last via PR #4, into `feat/itinerary-planning`). Safe to delete. |
+
+`feat/brainstorm` (AI activity generation, built on tables that `0003`
+dropped) no longer exists locally or on `origin`.
 
 ---
 
-## Done on `main`
+## Done (committed on `feat/itinerary-planning`)
 
 - **Schema cut to itinerary planning only.** Migration `0003` dropped seven
   tables, leaving five: `allowed_emails`, `trips`, `day_itineraries`,
@@ -27,17 +31,18 @@ Change the date when you do.
   reordering, naming a day. Every write is a single SQL statement. Tests:
   `shape`, `schemas`, `format` and `pg-errors` are pure unit tests, and
   `crud.test.ts` is the live database suite.
-- **Landing page at `/`.** Redesigned on 2026-11-22 (`feat/landing-page-redesign`):
-  hero with a route illustration, benefits, three steps, the two tools, a
-  closing call to action. Still wholly static. **`/` is public** (exact match
-  in `lib/auth/route-access.ts`); every other route stays behind sign-in. Its
+- **Landing page at `/`.** Introduces the Day Planner.
+  Redesigned on 2026-11-22 (`feat/landing-page-redesign`): hero with a route
+  illustration, benefits, three steps, planner features, and a closing call to
+  action. Still wholly static. **`/` is public** (exact match in
+  `lib/auth/route-access.ts`); every other route stays behind sign-in. Its
   CTAs link to `/plan`, so a signed-out visitor is redirected to `/login`.
 - **`/plan`**: create a trip (name + two dates) or reopen one. Wireframe
   Frame 0.
 - **`/plan/[tripId]`**: one column per day, listing the activities placed on
   it. Days are generated on first view.
-- **The Activity Bank** (wireframe Frame 1): a dialog over every activity
-  saved for the trip, with search that ignores accents. It brought the
+- **The Activity Bank** (wireframe Frame 1): a read-only dialog over every
+  activity saved for the trip, with search that ignores accents. It brought the
   `activities.area` column (the neighbourhood), migration
   `drizzle/0009_ambiguous_the_anarchist.sql`, `lib/itinerary/bank.ts` and
   `components/planner/ActivityBank*.tsx`.
@@ -45,22 +50,45 @@ Change the date when you do.
   `docs/` holds only feature-work context, and `.github/pr-template.md` is
   the PR description format (PR #4).
 
-## Done on this branch
+## In this worktree
 
-- **Step 0 = A (Postgres primary).** Research agent calls host tool
-  `submit_activity`; `/api/research` takes `tripId`, runs
-  `requireUserEmail` + `addActivity`, returns the saved activity.
-- **Trip-scoped UI** at `/plan/[tripId]/add`. Activity Bank empty state and
-  trip header link into it. `/write-to-notion` removed.
-- **Notion MCP removed** (`lib/mcp/`, `@notionhq/notion-mcp-server`,
-  `@modelcontextprotocol/sdk`, `NOTION_*` env).
-- Landing copy no longer links to Notion; CTAs point at `/plan`.
+- Removed Notion page generation from the app, including its UI and API route.
+  Existing records require no migration.
+
+## In review
+
+- **Standalone Activity Bank** at `/activity-bank`, linked from the Day Planner.
+  It manages existing and new activities across the signed-in user's trips.
+  Country and type labels use the existing activity metadata column, so the
+  bank works with the current database schema, including databases that
+  already have the email OTP migration.
+
+## After merging to `main`
+
+The 2026-11-21 merge goes ahead knowingly with these open. Do them first, in
+this order:
+
+1. **Verify the merge.** None of these were run before merging:
+   - `npm test`, `npm run lint` and `npm run build`. The last recorded pass is
+     from 2026-11-11, before the Activity Bank was committed.
+   - Confirm migration `0009` is applied to Neon. If it isn't,
+     `/plan/[tripId]` fails when it selects `area`:
+     `SELECT column_name FROM information_schema.columns WHERE table_name = 'activities' AND column_name = 'area';`
+     No row means you should run `npm run db:migrate`. It fails without
+     printing an error, so if there's no success line, replay the migration
+     through `psql`.
+   - In a browser: sign in, create a trip, open it, open the Activity Bank, and
+     verify its search and empty state.
+2. **Know the planner is incomplete on `main`.** You can create trips and see
+   their days, but nothing in the UI can add an activity yet, so the Activity
+   Bank is always empty. "Next, in order" items 1 and 2 below fix that.
 
 ## Next, in order
 
 1. **Place an activity on a day** from the UI. `placeActivityOnDay` /
    `appendActivityToDay` already exist; this needs a Server Action and UI.
-2. **Activity Modal** (Frame 3, "Save It") for manual edits.
+2. **Create an activity**, the Activity Modal (Frame 3, "Save It").
+   `addActivity` + `ActivityDraftSchema` exist.
 3. **Plan It**, the Itinerary Day (Frame 2).
 4. **Drag-to-reorder within a day.** `reorderDay` already renumbers a day in
    one statement.
@@ -69,8 +97,8 @@ Change the date when you do.
 
 | Decision | Status | Where it's written up |
 | --- | --- | --- |
-| **Rejection memory**: remember activities the user turned down so they aren't suggested again. | Open. Needs activities as real rows (done) plus a ratings path. | `CLAUDE.md` → Data model ("Nothing records rejection") |
-| **Activity identity key**: the same real place regenerated becomes a second row. | Open. | Below |
+| **Rejection memory**: remember activities the user turned down so they aren't suggested again. | Open. | `CLAUDE.md` → Data model ("Nothing records rejection") |
+| **Activity identity key**: the same real place regenerated becomes a second row. | Open. | [Activity identity key](#activity-identity-key) below |
 | **Composite FK** so a placement can't pair a day and an activity from different trips. | Open. The data layer enforces it for now. | `CLAUDE.md` → Data model; `sql/validate-itinerary.sql` check 9 |
 
 ### Activity identity key
@@ -84,5 +112,3 @@ touch the itinerary tables.
 ## Loose ends
 
 - No React component tests. Views are verified by browser only.
-- Deployment of the research route on serverless still needs a soak test
-  (`maxDuration` 120).

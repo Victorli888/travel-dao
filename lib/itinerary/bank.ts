@@ -76,17 +76,17 @@ export function formatBankMeta(counts: BankCounts): string {
  * `summary` would return rows whose reason for matching is invisible, which
  * reads as a bug rather than a feature.
  */
-function fold(value: string): string {
+export function fold(value: string): string {
   return value
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
 }
 
-export function filterBankEntries(
-  entries: BankEntry[],
+export function filterBankEntries<T extends BankEntry>(
+  entries: T[],
   query: string,
-): BankEntry[] {
+): T[] {
   const needle = fold(query.trim());
   if (!needle) return entries;
 

@@ -1,6 +1,5 @@
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { ArrowRightIcon } from "@/components/ui/icons";
 import type { KeyboardEvent, RefObject } from "react";
 
 interface Props {
@@ -47,7 +46,6 @@ export default function ChatInputView({
           </p>
           <Button size="sm" onClick={onSubmit} disabled={disabled || !value.trim()}>
             Add to bank
-            <ArrowRightIcon />
           </Button>
         </div>
       </Card>

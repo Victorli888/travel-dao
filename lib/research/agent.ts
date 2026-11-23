@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ValidationError } from "@/lib/api/errors";
-import { getEnv } from "@/lib/api/env";
+import { ConfigError, ValidationError } from "@/lib/api/errors";
 import type { ActivityDraft } from "@/lib/itinerary/schemas";
 import { buildSystemPrompt } from "./prompt";
 import {
@@ -142,8 +141,9 @@ export async function runAgentLoop(
 export async function runResearchAgent(
   message: string,
 ): Promise<ResearchResult> {
-  const env = getEnv();
-  const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) throw new ConfigError("Place research is not configured.");
+  const anthropic = new Anthropic({ apiKey });
   const systemPrompt = buildSystemPrompt();
 
   const submitted: { draft: ActivityDraft | null } = { draft: null };

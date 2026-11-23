@@ -2,8 +2,6 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { focusRing } from "@/components/landing/styles";
 
-const LINKS = [{ href: "/plan", label: "Day Planner" }];
-
 export default function LandingFooter() {
   return (
     <footer className="pb-12 pt-16">
@@ -19,21 +17,15 @@ export default function LandingFooter() {
           <span className="text-[14px] text-ink-subtle">The way through your trip.</span>
         </p>
         <nav aria-label="Footer">
-          <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0">
-            {LINKS.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className={cn(
-                    "rounded-md text-[14px] font-medium text-ink-subtle transition-colors hover:text-tao",
-                    focusRing,
-                  )}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <Link
+            href="/plan"
+            className={cn(
+              "rounded-md text-[14px] font-medium text-ink-subtle transition-colors hover:text-tao",
+              focusRing,
+            )}
+          >
+            Day Planner
+          </Link>
         </nav>
       </div>
     </footer>

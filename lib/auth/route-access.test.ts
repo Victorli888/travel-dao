@@ -14,16 +14,27 @@ describe("routeAccess", () => {
     expect(routeAccess("/", notAllowed)).toBe("allow");
   });
 
-  it.each(["/plan", "/plan/abc-123", "/plan/abc-123/add", "/api/research"])(
+  it.each([
+    "/plan",
+    "/plan/abc-123",
+    "/plan/abc-123/add",
+    "/api/research",
+    "/activity-bank",
+    "/other-page",
+  ])(
     "sends a signed-out visitor on %s to /login",
     (path) => {
       expect(routeAccess(path, null)).toBe("/login");
     },
   );
 
-  it("sends a signed-in user who is not on the allow-list to /unauthorized", () => {
-    expect(routeAccess("/plan", notAllowed)).toBe("/unauthorized");
-  });
+  it.each(["/plan", "/plan/abc-123/add", "/api/research", "/activity-bank"])(
+    "sends a signed-in user off the allow-list from %s to /unauthorized",
+    (path) => {
+      expect(routeAccess(path, notAllowed)).toBe("/unauthorized");
+      expect(routeAccess(path, allowed)).toBe("allow");
+    },
+  );
 
   it("lets an allowed user through to a protected route", () => {
     expect(routeAccess("/plan", allowed)).toBe("allow");
@@ -41,6 +52,6 @@ describe("isPublicPath", () => {
   it("matches / exactly, not as a prefix", () => {
     expect(isPublicPath("/")).toBe(true);
     expect(isPublicPath("/plan")).toBe(false);
-    expect(isPublicPath("/plan/abc-123/add")).toBe(false);
+    expect(isPublicPath("/other-page")).toBe(false);
   });
 });
