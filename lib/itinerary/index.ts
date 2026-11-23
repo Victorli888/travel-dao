@@ -29,6 +29,7 @@ export {
 
 export {
   listActivities,
+  listSavedActivities,
   getActivity,
   addActivity,
   updateActivity,

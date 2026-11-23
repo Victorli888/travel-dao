@@ -29,6 +29,8 @@ export type Placement = PlacementRow;
 export type Activity = Omit<ActivityRow, "lat" | "lng"> & {
   lat: number | null;
   lng: number | null;
+  country: string | null;
+  activityType: string | null;
 };
 
 /** Ordering belongs to the pairing, not the activity. */

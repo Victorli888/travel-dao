@@ -39,6 +39,10 @@ export default async function PlanPage() {
               道
             </span>
           </Link>
+          <Link href="/activity-bank"
+            className={cn("rounded-md text-[13px] font-medium text-tao underline-offset-4 hover:underline", focusRing)}>
+            Activity Bank
+          </Link>
         </nav>
       </div>
 

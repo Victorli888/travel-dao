@@ -13,6 +13,7 @@ import {
   getItinerary,
   getTrip,
   listActivities,
+  listSavedActivities,
   listDays,
   listPlacements,
   listTrips,
@@ -326,6 +327,69 @@ live("itinerary data access layer", () => {
     });
     expect(moved.lat).toBeCloseTo(-33.8568, 4);
     expect(moved.lng).toBeCloseTo(151.2153, 4);
+  });
+
+  it("lists owned activities across trips and edits older unlabelled records in place", async () => {
+    const first = await createTrip(EMAIL, { name: "First trip" });
+    const second = await createTrip(EMAIL, { name: "Second trip" });
+    const other = await createTrip(OTHER, { name: "Private trip" });
+    const legacy = await addActivity(EMAIL, first.id, {
+      ...TEAMLAB,
+      sourceMetadata: { providerId: "original" },
+    });
+    const day = await addDay(EMAIL, first.id, "2027-04-01");
+    await placeActivityOnDay(EMAIL, day.id, legacy.id);
+    const unscheduled = await addActivity(EMAIL, second.id, SENSOJI);
+    await addActivity(OTHER, other.id, TEAMLAB);
+
+    expect((await listSavedActivities(EMAIL)).map(({ id }) => id)).toEqual([
+      legacy.id, unscheduled.id,
+    ]);
+    expect(legacy).toMatchObject({ country: null, activityType: null });
+    await expect(updateActivity(OTHER, legacy.id, { country: "Japan" })).rejects.toThrow(NotFoundError);
+    await updateActivity(EMAIL, legacy.id, { country: "Japan", activityType: "Museum" });
+
+    expect(await getActivity(EMAIL, legacy.id)).toMatchObject({
+      id: legacy.id,
+      tripId: first.id,
+      country: "Japan",
+      activityType: "Museum",
+      sourceMetadata: { providerId: "original" },
+    });
+    expect((await getItinerary(EMAIL, first.id))?.days[0].activities[0].id).toBe(legacy.id);
+  });
+
+  it("keeps editable labels separate from research and legacy provider metadata", async () => {
+    const trip = await createTrip(EMAIL, { name: "Trip" });
+    const research = await addActivity(EMAIL, trip.id, {
+      ...TEAMLAB,
+      sourceMetadata: { country: " Japan ", category: "Museum", query: "teamLab" },
+    });
+    expect(research).toMatchObject({ country: "Japan", activityType: "Museum" });
+
+    await updateActivity(EMAIL, research.id, { activityType: null });
+    await updateActivity(EMAIL, research.id, { sourceMetadata: ["legacy", 42] });
+    const labelled = await updateActivity(EMAIL, research.id, { country: "France" });
+    expect(labelled).toMatchObject({
+      activityType: null,
+      country: "France",
+      sourceMetadata: ["legacy", 42],
+    });
+    const refreshed = await updateActivity(EMAIL, research.id, {
+      sourceMetadata: { category: "Gallery" },
+    });
+    expect(refreshed).toMatchObject({
+      activityType: null,
+      country: "France",
+      sourceMetadata: { category: "Gallery" },
+    });
+
+    const manual = await addActivity(EMAIL, trip.id, {
+      ...SENSOJI, country: "Japan", activityType: "Temple", sourceMetadata: 42,
+    });
+    expect(await getActivity(EMAIL, manual.id)).toMatchObject({
+      country: "Japan", activityType: "Temple", sourceMetadata: 42,
+    });
   });
 
   it("reads and deletes a single activity, scoped to its owner", async () => {
