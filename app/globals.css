@@ -62,6 +62,8 @@
   }
 
   --font-tao: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Headings on the light pages: trip, day and stop titles, landing headings. */
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
 body {

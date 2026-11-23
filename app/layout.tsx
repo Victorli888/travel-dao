@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
@@ -14,6 +14,19 @@ const inter = Inter({
   display: "swap",
 });
 
+/**
+ * The display face: a soft, editorial serif for trip, day and stop titles.
+ * Reaches only what asks for it via `font-display`; body text stays Inter.
+ * Variable, so `font-semibold` etc. need no extra weight files; `opsz` lets
+ * large titles use the high-contrast cut and small ones the sturdier one.
+ */
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+  axes: ["opsz"],
+});
+
 export const metadata: Metadata = {
   title: "Dao",
   description: "Plan your trips day by day and keep track of the places you want to visit.",
@@ -21,7 +34,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="antialiased">
         <SessionProvider>{children}</SessionProvider>
       </body>

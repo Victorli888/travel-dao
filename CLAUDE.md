@@ -54,7 +54,7 @@ The Day Planner uses the Next.js 15 App Router.
 | `/` | The Itinerary Planning landing page. Static marketing, no data access. **The one public page**: `lib/auth/route-access.ts` matches it exactly — a prefix match on `/` would make every route public. |
 | `/plan` | The Day Planner's front door. Name a trip, set its two dates, or reopen one you started. |
 | `/activity-bank` | Manage saved activities across the signed-in user’s trips. |
-| `/plan/[tripId]` | One trip: a card per day that opens the day's plan in a `<dialog>` (stops in order, each expandable), plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
+| `/plan/[tripId]` | One trip: a scroll-snap carousel of day cards, each opening the day's plan in a `<dialog>` (stops in order, each expandable), plus the Activity Bank — a read-only dialog over everything saved for the trip. Placing an activity on a day, creating one, and Plan It land here next. |
 | `/plan/[tripId]/add` | Research a place and save it to the owned trip through `POST /api/research`. |
 
 **The planner has no API routes and should not grow any.** `/plan`,
@@ -212,7 +212,7 @@ in a hook or in `lib/`, with the containers below owning local interaction state
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app/` | Routes and Server Actions. Server Components call the data layer directly. |
 | `components/ui/`               | Presentational primitives: `PageShell`, `Wordmark`, `Card`, `Button` (+ `buttonStyles` for anchors), `icons`.                            |
-| `components/planner/`          | Presentational views for `/plan`. Three containers own local interaction state: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle), `ActivityBank` (a draft search string and two refs) and `DayPlanner` (which day the day dialog shows and which of its stops are expanded). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
+| `components/planner/`          | Presentational views for `/plan`. Three containers own local interaction state: `NewTripForm` (the three field values, to decide whether submit is live, plus the `useActionState` lifecycle), `ActivityBank` (a draft search string and two refs) and `DayPlanner` (which day the day dialog shows, which of its stops are expanded, and the carousel's visible range read from the scroller). Each delegates rendering to its `*View`. `fieldStyles.ts` is the shared form-control class strings, in the spirit of `buttonStyles`. |
 | `components/landing/`          | Presentational sections of `/`. Same rule as `components/ui/`, and stricter in practice: nothing here is a client component, so the landing ships as markup with no page JS. |
 | `lib/db/`                      | `schema.ts` (source of truth), `client.ts` (raw `getSql`), `index.ts` (adds Drizzle `getDb`). `@/lib/db` resolves to `index.ts`.                        |
 | `lib/itinerary/`               | The itinerary data access layer. Split by entity (`trips`, `days`, `activities`, `placements`) plus pure `shape`/`schemas`/`format`/`bank`/`day-plan` and a `pg-errors` translator. `server-only`; `userEmail` on every signature. |
@@ -296,4 +296,20 @@ token, because one that equalled the ground would look like a surface in the
 palette and render as nothing on the page.
 
 Inter is loaded in `app/layout.tsx` as `--font-inter` and reaches only what
-asks for it via `font-tao`; the dark pages keep the system stack.
+asks for it via `font-tao`; the dark pages keep the system stack. Fraunces is
+the display face, `--font-fraunces` → `font-display`, for headings on the
+light pages only: the landing's hero and section headings, and the trip,
+day and stop titles on `/plan/[tripId]`. Body text and UI stay Inter.
+
+`/plan/[tripId]` spends the palette more boldly than the landing: a navy
+(`bg-ink`) header band with white and `sky` text, `sky` accent stripes and
+tints on day cards, `tao` number badges. On navy, `sky` is legible text (about
+10:1); on white it is still decoration only.
+
+**The day carousel is native scrolling, not a library.** CSS `scroll-snap`
+snaps, swipe and trackpad come free, and focusing a card scrolls it in. Card
+widths are `(track − gaps) / n` per breakpoint (≈1.2 below `md`, then 3, 4,
+5) so n cards fit exactly. `DayPlanner` only reads the scroller, through the
+pure geometry in `lib/carousel.ts`, to drive the arrows and the "Days 1–5 of
+12" indicator, and scrolls horizontally with `scrollTo` (never
+`scrollIntoView`, which would move the page behind an open dialog).

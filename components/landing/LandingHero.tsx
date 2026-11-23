@@ -10,7 +10,7 @@ export default function LandingHero() {
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-ember" />
           A day-by-day trip planner
         </p>
-        <h1 className="m-0 mt-6 text-[clamp(2.5rem,4.4vw,3.25rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
+        <h1 className="m-0 mt-6 font-display text-[clamp(2.5rem,4.4vw,3.25rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
           <span className="xl:block">Pick your adventures. </span>
           <span className="xl:block">Let Tao show the way.</span>
         </h1>

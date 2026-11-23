@@ -3,6 +3,7 @@ import {
   formatDuration,
   formatPriority,
   stepDay,
+  summarizePlan,
   toPlanDays,
   toPlanStop,
   toggleId,
@@ -65,16 +66,17 @@ describe("formatPriority", () => {
   });
 
   it("names the ends of the scale", () => {
-    expect(formatPriority(5)).toBe("Must-do (5 of 5)");
-    expect(formatPriority(1)).toBe("Maybe (1 of 5)");
-    expect(formatPriority(3)).toBe("3 of 5");
+    expect(formatPriority(5)).toBe("Must-do");
+    expect(formatPriority(1)).toBe("Maybe");
+    expect(formatPriority(3)).toBe("Priority 3 of 5");
   });
 });
 
 describe("toPlanStop", () => {
   it("lists only the fields that are recorded", () => {
-    const stop = toPlanStop(activity({ priorityScore: 4 }));
-    expect(stop.details).toEqual([{ label: "Priority", value: "4 of 5" }]);
+    const stop = toPlanStop(activity({ priorityScore: 4, hoursOperation: "9–5" }));
+    expect(stop.details).toEqual([{ label: "Hours", value: "9–5" }]);
+    expect(stop.priorityLabel).toBe("Priority 4 of 5");
     expect(stop.area).toBeNull();
     expect(stop.mapHref).toBeNull();
   });
@@ -97,7 +99,6 @@ describe("toPlanStop", () => {
       "Address",
       "Hours",
       "Time needed",
-      "Priority",
       "Type",
       "Country",
     ]);
@@ -127,6 +128,8 @@ describe("toPlanDays", () => {
       title: "Temple day",
       dateLabel: "Wed 15 Apr",
       spokenDate: "Wednesday, 15 April 2026",
+      kicker: "Wednesday · 15 April",
+      heading: "Temple day",
     });
   });
 
@@ -161,5 +164,39 @@ describe("toggleId", () => {
     expect(opened.has("a")).toBe(true);
     expect(start.size).toBe(0);
     expect(toggleId(opened, "a").has("a")).toBe(false);
+  });
+});
+
+describe("areas and summary", () => {
+  it("collects distinct recorded areas per day and skips NULL", () => {
+    const [d] = toPlanDays([
+      day({
+        activities: [
+          activity({ id: "a", area: "Gion" }),
+          activity({ id: "b", area: null }),
+          activity({ id: "c", area: "Gion" }),
+          activity({ id: "d", area: "Fushimi" }),
+        ],
+      }),
+    ]);
+    expect(d.areas).toEqual(["Gion", "Fushimi"]);
+    expect(d.shortDate).toBe("Tue 14 Apr");
+    expect(d).toMatchObject({ kicker: "Tuesday", heading: "14 April" });
+  });
+
+  it("totals days, stops and distinct areas across the trip", () => {
+    const days = toPlanDays([
+      day({ activities: [activity({ id: "a", area: "Gion" })] }),
+      day({
+        id: "d2",
+        date: "2026-04-15",
+        activities: [
+          activity({ id: "a", area: "Gion" }),
+          activity({ id: "b", area: "Fushimi" }),
+        ],
+      }),
+      day({ id: "d3", date: "2026-04-16" }),
+    ]);
+    expect(summarizePlan(days)).toEqual({ days: 3, stops: 3, areas: 2 });
   });
 });
