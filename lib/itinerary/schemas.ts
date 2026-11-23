@@ -121,8 +121,7 @@ export const UpdateTripSchema = z
 export type UpdateTripInput = z.infer<typeof UpdateTripSchema>;
 
 /**
- * One schema, two producers: the "add a place" form, and the research agent
- * once it persists. `summary` is required — the column is `NOT NULL`.
+ * `summary` is required because the column is `NOT NULL`.
  */
 export const ActivityDraftSchema = z.object({
   name: ActivityName,
@@ -172,7 +171,7 @@ export const PositionSchema = z.number().int().min(1).nullable();
 
 /**
  * Throws `ValidationError` (400) carrying the first issue's message, so no
- * caller branches on a status. Mirrors `parseResearchRequest`.
+ * caller branches on a status.
  */
 export function parseInput<T>(
   schema: z.ZodType<T>,

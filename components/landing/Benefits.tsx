@@ -11,12 +11,6 @@ const ICONS = {
   bookmark: (
     <path d="M7 3.5h10a1 1 0 0 1 1 1V21l-6-4-6 4V4.5a1 1 0 0 1 1-1Z" />
   ),
-  compass: (
-    <>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" />
-    </>
-  ),
 };
 
 const BENEFITS: Array<{
@@ -34,11 +28,6 @@ const BENEFITS: Array<{
     title: "One home for your wishlist",
     body: "Every activity you save stays with its trip in the Activity Bank, scheduled or not. Search it by name or neighbourhood, accents optional.",
   },
-  {
-    icon: "compass",
-    title: "Research done for you",
-    body: "Give Write to Notion a place and its address. A Claude agent checks what is really there, sums it up, and files it in your Notion travel planner.",
-  },
 ];
 
 export default function Benefits() {
@@ -51,7 +40,7 @@ export default function Benefits() {
         </h2>
       </div>
 
-      <ul className="m-0 mt-12 grid list-none gap-5 p-0 md:grid-cols-3 md:gap-6">
+      <ul className="m-0 mt-12 grid list-none gap-5 p-0 md:grid-cols-2 md:gap-6">
         {BENEFITS.map((benefit) => (
           <li
             key={benefit.title}

@@ -5,9 +5,8 @@ import NewTripFormView from "./NewTripFormView";
 import { createTripAction } from "@/app/plan/actions";
 
 /**
- * The one container in `components/planner/`, on the same terms as
- * `ChatInput` in `components/research/`: form-local state and the request
- * lifecycle, nothing else. Rendering belongs to `NewTripFormView`.
+ * Owns form-local state and the request lifecycle. Rendering belongs to
+ * `NewTripFormView`.
  *
  * The three field values are mirrored in state only to decide whether the
  * submit button is live. The values the server reads come from the

@@ -22,15 +22,6 @@ export default function LandingNav() {
       </Link>
       <div className="flex items-center gap-2 sm:gap-5">
         <Link
-          href="/write-to-notion"
-          className={cn(
-            "hidden rounded-md text-[14px] font-medium text-ink-subtle transition-colors hover:text-tao sm:inline",
-            focusRing,
-          )}
-        >
-          Write to Notion
-        </Link>
-        <Link
           href="/plan"
           className={buttonStyles({
             variant: "tao",

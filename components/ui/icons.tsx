@@ -11,35 +11,10 @@ const stroke = {
   strokeLinejoin: "round",
 } as const;
 
-export function ArrowRightIcon({ size = 13, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
-      <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-export function CheckIcon({ size = 14, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
 export function XIcon({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...stroke}>
       <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
-  );
-}
-
-/** Stacked lines suggesting a document path/outline. */
-export function PathIcon({ size = 13, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
     </svg>
   );
 }
