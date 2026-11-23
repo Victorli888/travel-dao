@@ -41,7 +41,9 @@ export async function requestOtpAction(formData: FormData): Promise<void> {
         secret: getOtpSecret(),
         now: () => new Date(),
         isAllowed: isEmailAllowed,
-        sendCode: (to, code) => mailer.send(otpEmail(to, code)),
+        sendCode: async (to, code) => {
+          await mailer.send(otpEmail(to, code));
+        },
         defer: (task) => after(task),
       },
       email,
